@@ -10,8 +10,11 @@ dependencies = [
     "datasets>=4.4.1",
     "peft>=0.18.0",
     "pydantic>=2.12.5",
-    "pydantic-config>=0.3.0",
+    "pydantic-config",
     "scipy>=1.16.3",
     "torch>=2.9.1",
     "transformers>=4.57.3",
 ]
+
+[tool.uv.sources]
+pydantic-config = { git = "https://github.com/samsja/pydantic_config" }
