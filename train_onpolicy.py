@@ -56,9 +56,7 @@ def reverse_kl_on_generated(
 
 @validate_call
 def main(conf: OnPolicyKDConfig = OnPolicyKDConfig()) -> None:
-    # -----------------------------
-    # Setup & seeding
-    # -----------------------------
+    # Setup
     accelerator = Accelerator(
         log_with="wandb",
         mixed_precision=conf.mixed_precision,
@@ -79,9 +77,7 @@ def main(conf: OnPolicyKDConfig = OnPolicyKDConfig()) -> None:
 
     dtype = torch.bfloat16 if conf.mixed_precision == "bf16" else torch.float16
 
-    # -----------------------------
     # Tokenizer & dataset
-    # -----------------------------
     tokenizer = AutoTokenizer.from_pretrained(conf.teacher_model_name, use_fast=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
@@ -133,9 +129,7 @@ def main(conf: OnPolicyKDConfig = OnPolicyKDConfig()) -> None:
         collate_fn=collate_prompts,
     )
 
-    # -----------------------------
-    # Models: teacher FP, student 4-bit + LoRA
-    # -----------------------------
+    # Models
     bnb_config = BitsAndBytesConfig(
         load_in_4bit=True,
         bnb_4bit_compute_dtype=dtype,

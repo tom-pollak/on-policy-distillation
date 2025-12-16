@@ -176,7 +176,6 @@ def main(conf: KDBaselineConfig = KDBaselineConfig()) -> None:
         weight_decay=conf.weight_decay,
         warmup_ratio=conf.warmup_ratio,
         logging_steps=conf.logging_steps,
-        evaluation_strategy="steps",
         eval_steps=conf.eval_steps,
         save_steps=conf.save_steps,
         save_total_limit=2,
@@ -186,7 +185,9 @@ def main(conf: KDBaselineConfig = KDBaselineConfig()) -> None:
         report_to=["wandb"],
         run_name="baseline",
         torch_compile=conf.dynamo_backend != "no",
-        torch_compile_backend=conf.dynamo_backend if conf.dynamo_backend != "no" else None,
+        torch_compile_backend=conf.dynamo_backend
+        if conf.dynamo_backend != "no"
+        else None,
     )
 
     trainer = KDTrainer(
