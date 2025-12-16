@@ -56,10 +56,11 @@ def main(conf: OnPolicyKDConfig = OnPolicyKDConfig()) -> None:
         bnb_4bit_use_double_quant=True,
     )
 
+    local_rank = int(os.environ.get("LOCAL_RANK", 0))
     student_model = AutoModelForCausalLM.from_pretrained(
         conf.student_model_name,
         quantization_config=bnb_config,
-        device_map={"": torch.cuda.current_device()},
+        device_map={"": local_rank},
     )
 
     lora_config = LoraConfig(
