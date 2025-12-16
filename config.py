@@ -2,7 +2,7 @@ from pathlib import Path
 from pydantic_config import BaseConfig
 
 
-class OnPolicyKDConfig(CommonModelConfig):
+class OnPolicyKDConfig(BaseConfig):
     # model & data
     model_name: str = "Qwen/Qwen2.5-7B-Instruct"
     dataset_name: str = "allenai/tulu-3-sft-mixture"
