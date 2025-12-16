@@ -12,19 +12,12 @@ class CommonModelConfig(BaseConfig):
     max_seq_length: int = 2048
     mixed_precision: str = "bf16"  # "no", "fp16", "bf16"
     dynamo_backend: str = "inductor"  # "no", "inductor", etc.
-    device_map: str = (
-        "auto"  # used in baseline/eval; on-policy uses single-GPU by default
-    )
-
-    # data slicing (train/eval)
-    max_train_samples: int | None = 100_000
-    max_eval_samples: int | None = 2_000
 
     # batching / optimisation (shared defaults)
     per_device_train_batch_size: int = 4  # H100s can handle much more
     per_device_eval_batch_size: int = 18
     gradient_accumulation_steps: int = 1  # reduce since batch is larger
-    learning_rate: float = 1e-4
+    learning_rate: float = 1.0e-5
     weight_decay: float = 0.0
     warmup_ratio: float = 0.03
 
@@ -40,16 +33,6 @@ class CommonModelConfig(BaseConfig):
     seed: int = 42
 
 
-class KDBaselineConfig(CommonModelConfig):
-    # training length
-    num_train_epochs: float = 1.0
-
-    output_dir: Path = Path("./qwen_kd_baseline")
-
-    # KD-specific
-    kd_alpha: float = 0.5  # weight on supervised CE; 1 - alpha on KL
-
-
 class OnPolicyKDConfig(CommonModelConfig):
     # we reuse:
     # - per_device_train_batch_size as rollout batch_size
@@ -58,6 +41,10 @@ class OnPolicyKDConfig(CommonModelConfig):
     max_train_steps: int = 100
     max_new_tokens: int = 128
     output_dir: Path = Path("./qwen_onpolicy_kd")
+
+    # GKD params
+    lmbda: float = 1.0  # 0.0 = off-policy (dataset), 1.0 = on-policy (student rollouts)
+    beta: float = 0.0  # 0.0 = forward KL, 1.0 = reverse KL
 
 
 class MergeConfig(BaseConfig):

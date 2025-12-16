@@ -8,6 +8,7 @@ dependencies = [
     "accelerate>=1.12.0",
     "bitsandbytes>=0.49.0",
     "datasets>=4.4.1",
+    "lm-eval>=0.4.0",
     "peft>=0.18.0",
     "pydantic>=2.12.5",
     "pydantic-config",

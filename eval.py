@@ -1,148 +1,90 @@
-import math
-from typing import Any, Dict, List
-
 import torch
-from torch.utils.data import DataLoader
-from datasets import load_dataset
+import wandb
+from lm_eval import evaluator
+from lm_eval.models.huggingface import HFLM
 from pydantic import validate_call
 from pydantic_config import parse_argv
-from transformers import (
-    AutoTokenizer,
-    AutoModelForCausalLM,
-    BitsAndBytesConfig,
-)
+from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
 from config import EvalConfig
 
-
-def collate_fn(batch):
-    input_ids = torch.tensor([ex["input_ids"] for ex in batch], dtype=torch.long)
-    attention_mask = torch.tensor(
-        [ex["attention_mask"] for ex in batch], dtype=torch.long
-    )
-    labels = torch.tensor([ex["labels"] for ex in batch], dtype=torch.long)
-    return {"input_ids": input_ids, "attention_mask": attention_mask, "labels": labels}
+DEFAULT_TASKS = ["hellaswag", "arc_easy", "arc_challenge", "winogrande", "mmlu"]
 
 
-@torch.no_grad()
-def evaluate_model(model, name: str, dataloader, device) -> Dict[str, Any]:
-    model.eval()
-    total_loss = 0.0
-    total_tokens = 0
-
-    for batch in dataloader:
-        input_ids = batch["input_ids"].to(device)
-        attention_mask = batch["attention_mask"].to(device)
-        labels = batch["labels"].to(device)
-
-        outputs = model(
-            input_ids=input_ids,
-            attention_mask=attention_mask,
-            labels=labels,
+def load_model(path: str, dtype: torch.dtype, quantize_4bit: bool = False):
+    """Load a model, optionally with 4-bit quantization."""
+    if quantize_4bit:
+        bnb_config = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_compute_dtype=dtype,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_use_double_quant=True,
         )
-        loss = outputs.loss
-        num_tokens = (labels != -100).sum().item()
-        total_loss += loss.item() * num_tokens
-        total_tokens += num_tokens
+        return AutoModelForCausalLM.from_pretrained(
+            path, quantization_config=bnb_config
+        )
+    return AutoModelForCausalLM.from_pretrained(
+        path, torch_dtype=dtype, device_map="auto"
+    )
 
-    mean_loss = total_loss / total_tokens
-    ppl = math.exp(mean_loss)
-    return {"name": name, "loss": mean_loss, "ppl": ppl}
+
+def run_lm_eval(model, tokenizer, task_list: list[str], num_fewshot: int = 0) -> dict:
+    """Run lm-evaluation-harness on specified tasks."""
+    lm = HFLM(pretrained=model, tokenizer=tokenizer)
+    results = evaluator.simple_evaluate(
+        model=lm,
+        tasks=task_list,
+        num_fewshot=num_fewshot,
+        batch_size="auto",
+    )
+    return {
+        task: results["results"][task].get(
+            "acc,none", results["results"][task].get("acc_norm,none")
+        )
+        for task in task_list
+    }
 
 
 @validate_call
 def main(conf: EvalConfig = EvalConfig()) -> None:
-    dtype = torch.bfloat16 if conf.bf16 else torch.float16
+    wandb.init(
+        project="on-policy-distillation", name="eval_comparison", job_type="eval"
+    )
 
+    dtype = torch.bfloat16 if conf.bf16 else torch.float16
     tokenizer = AutoTokenizer.from_pretrained(conf.teacher_model_name, use_fast=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    raw_dataset = load_dataset(conf.dataset_name, split=conf.eval_split)
-    if conf.max_eval_samples:
-        raw_eval = raw_dataset.select(range(conf.max_eval_samples))
-    else:
-        raw_eval = raw_dataset
+    models = {
+        "teacher": (conf.teacher_model_name, False),
+        "student_ptq_4bit": (conf.ptq_student_name, True),
+        "student_offpolicy": (conf.kd_student_dir, True),
+        "student_onpolicy": (conf.onpolicy_student_dir, True),
+    }
 
-    def format_example(example):
-        text = tokenizer.apply_chat_template(
-            example["messages"],
-            tokenize=False,
-            add_generation_prompt=False,
+    header = f"{'model':25s} | " + " | ".join(f"{t[:8]:>8s}" for t in DEFAULT_TASKS)
+    print(header)
+    table = wandb.Table(columns=["model"] + DEFAULT_TASKS)
+    for name, (path, quantize) in models.items():
+        model = load_model(path, dtype, quantize_4bit=quantize)
+
+        downstream = run_lm_eval(model, tokenizer, DEFAULT_TASKS)
+
+        # log
+        print(
+            f"{name:25s} | "
+            + " | ".join(f"{downstream[t]:8.4f}" for t in DEFAULT_TASKS)
         )
-        tokenized = tokenizer(
-            text,
-            max_length=conf.max_seq_length,
-            truncation=True,
-            padding="max_length",
-        )
-        tokenized["labels"] = tokenized["input_ids"].copy()
-        return tokenized
+        table.add_data(name, *[downstream[t] for t in DEFAULT_TASKS])
+        for task in DEFAULT_TASKS:
+            wandb.summary[f"{name}/{task}"] = downstream[task]
 
-    eval_dataset = raw_eval.map(format_example, remove_columns=raw_eval.column_names)
-    eval_loader = DataLoader(
-        eval_dataset,
-        batch_size=conf.per_device_eval_batch_size,
-        shuffle=False,
-        collate_fn=collate_fn,
-    )
+        del model
+        torch.cuda.empty_cache()
 
-    # Load models
-    print("Loading teacher...")
-    teacher_model = AutoModelForCausalLM.from_pretrained(
-        conf.teacher_model_name,
-        torch_dtype=dtype,
-        device_map=conf.device_map,
-        trust_remote_code=True,
-    )
-
-    print("Loading PTQ student (4-bit, no finetune)...")
-    bnb_config = BitsAndBytesConfig(
-        load_in_4bit=True,
-        bnb_4bit_compute_dtype=dtype,
-        bnb_4bit_quant_type="nf4",
-        bnb_4bit_use_double_quant=True,
-    )
-    ptq_student = AutoModelForCausalLM.from_pretrained(
-        conf.ptq_student_name,
-        quantization_config=bnb_config,
-        device_map=conf.device_map,
-        trust_remote_code=True,
-    )
-
-    print("Loading KD (off-policy) student...")
-    kd_student = AutoModelForCausalLM.from_pretrained(
-        str(conf.kd_student_dir),
-        torch_dtype=dtype,
-        device_map=conf.device_map,
-        trust_remote_code=True,
-    )
-
-    print("Loading on-policy KD student (4-bit merged)...")
-    onpolicy_student = AutoModelForCausalLM.from_pretrained(
-        str(conf.onpolicy_student_dir),
-        quantization_config=bnb_config,
-        device_map=conf.device_map,
-        trust_remote_code=True,
-    )
-
-    device = list(teacher_model.parameters())[0].device
-
-    results: List[Dict[str, Any]] = []
-    results.append(evaluate_model(teacher_model, "teacher_fp", eval_loader, device))
-    results.append(evaluate_model(ptq_student, "student_ptq_4bit", eval_loader, device))
-    results.append(
-        evaluate_model(kd_student, "student_kd_offpolicy", eval_loader, device)
-    )
-    results.append(
-        evaluate_model(onpolicy_student, "student_kd_onpolicy", eval_loader, device)
-    )
-
-    print("\n=== Perplexity comparison on Tulu-3 eval slice ===")
-    print(f"{'model':30s} | {'loss':10s} | {'ppl':10s}")
-    print("-" * 60)
-    for r in results:
-        print(f"{r['name']:30s} | {r['loss']:.4f}     | {r['ppl']:.2f}")
+    wandb.log({"eval_results": table})
+    wandb.finish()
 
 
 if __name__ == "__main__":
