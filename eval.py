@@ -118,10 +118,10 @@ def main(conf: EvalConfig = EvalConfig()) -> None:
         trust_remote_code=True,
     )
 
-    print("Loading on-policy KD student...")
+    print("Loading on-policy KD student (4-bit merged)...")
     onpolicy_student = AutoModelForCausalLM.from_pretrained(
         str(conf.onpolicy_student_dir),
-        torch_dtype=dtype,
+        quantization_config=bnb_config,
         device_map=conf.device_map,
         trust_remote_code=True,
     )

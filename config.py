@@ -21,9 +21,9 @@ class CommonModelConfig(BaseConfig):
     max_eval_samples: int | None = 2_000
 
     # batching / optimisation (shared defaults)
-    per_device_train_batch_size: int = 2
-    per_device_eval_batch_size: int = 2
-    gradient_accumulation_steps: int = 8
+    per_device_train_batch_size: int = 16  # H100s can handle much more
+    per_device_eval_batch_size: int = 16
+    gradient_accumulation_steps: int = 1  # reduce since batch is larger
     learning_rate: float = 1e-4
     weight_decay: float = 0.0
     warmup_ratio: float = 0.03
@@ -52,16 +52,23 @@ class OnPolicyKDConfig(CommonModelConfig):
     # - per_device_train_batch_size as rollout batch_size
     # - gradient_accumulation_steps, learning_rate, warmup_ratio, seed, etc.
 
-    max_train_steps: int = 10_000
+    max_train_steps: int = 100
     max_new_tokens: int = 128
     output_dir: Path = Path("./qwen_onpolicy_kd")
+
+
+class MergeConfig(BaseConfig):
+    base_model_name: str = "Qwen/Qwen2.5-7B-Instruct"
+    lora_dir: Path = Path("./qwen_onpolicy_kd")
+    output_dir: Path = Path("./qwen_onpolicy_merged")
+    bf16: bool = True
 
 
 class EvalConfig(CommonModelConfig):
     # which student checkpoints to compare
     ptq_student_name: str = "Qwen/Qwen2.5-7B-Instruct"
     kd_student_dir: Path = Path("./qwen_kd_baseline")
-    onpolicy_student_dir: Path = Path("./qwen_onpolicy_kd")
+    onpolicy_student_dir: Path = Path("./qwen_onpolicy_merged")  # merged + re-quantized
 
     eval_split: str = "train"  # Tulu-3 is a single split; we just slice
     # per_device_eval_batch_size, max_eval_samples, max_seq_length, etc.
