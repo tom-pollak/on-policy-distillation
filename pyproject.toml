@@ -1,7 +1,7 @@
 [project]
 name = "on-policy-distillation"
 version = "0.1.0"
-description = "Add your description here"
+description = "On polic"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = []
