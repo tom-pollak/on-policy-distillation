@@ -88,6 +88,8 @@ def main(conf: OnPolicyKDConfig = OnPolicyKDConfig()) -> None:
         fp16=conf.mixed_precision == "fp16",
         report_to=["wandb"],
         run_name="on_policy_gkd",
+        gradient_checkpointing=True,
+        gradient_checkpointing_kwargs={"use_reentrant": False},
         lmbda=1.0,  # 1.0 = pure on-policy (generate from student)
         beta=1.0,  # 1.0 = reverse KL (mode-seeking), 0.0 = forward KL
         temperature=1.0,
