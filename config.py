@@ -21,7 +21,7 @@ class CommonModelConfig(BaseConfig):
     max_eval_samples: int | None = 2_000
 
     # batching / optimisation (shared defaults)
-    per_device_train_batch_size: int = 10  # H100s can handle much more
+    per_device_train_batch_size: int = 6  # H100s can handle much more
     per_device_eval_batch_size: int = 18
     gradient_accumulation_steps: int = 1  # reduce since batch is larger
     learning_rate: float = 1e-4
