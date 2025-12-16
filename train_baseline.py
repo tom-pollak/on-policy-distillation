@@ -77,7 +77,7 @@ def main(conf: KDBaselineConfig = KDBaselineConfig()) -> None:
 
     teacher_model = AutoModelForCausalLM.from_pretrained(
         conf.teacher_model_name,
-        torch_dtype=dtype,
+        dtype=dtype,
         device_map=device_map,
         trust_remote_code=True,
     )

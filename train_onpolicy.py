@@ -9,7 +9,7 @@ from peft import LoraConfig, get_peft_model
 from pydantic import validate_call
 from pydantic_config import parse_argv
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
-from trl import GKDConfig, GKDTrainer
+from trl.experimental.gkd import GKDConfig, GKDTrainer
 
 from config import OnPolicyKDConfig
 
@@ -44,7 +44,7 @@ def main(conf: OnPolicyKDConfig = OnPolicyKDConfig()) -> None:
     # Teacher model
     teacher_model = AutoModelForCausalLM.from_pretrained(
         conf.teacher_model_name,
-        torch_dtype=dtype,
+        dtype=dtype,
         trust_remote_code=True,
     )
 
