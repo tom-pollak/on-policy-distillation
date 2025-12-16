@@ -37,9 +37,9 @@ class KDBaselineConfig(CommonModelConfig):
     num_train_epochs: float = 1.0
 
     # logging / ckpts
-    logging_steps: int = 50
-    save_steps: int = 1000
-    eval_steps: int = 1000
+    logging_steps: int = 1
+    save_steps: int = 100
+    eval_steps: int = 100
     output_dir: Path = Path("./qwen_kd_baseline")
 
     # KD-specific
