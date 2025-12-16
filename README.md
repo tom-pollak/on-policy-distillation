@@ -15,13 +15,13 @@ torch transformers datasets accelerate bitsandbytes peft scipy pydantic pydantic
 ### 1. Off-policy KD baseline
 
 ```bash
-uv run accelerate launch --num_processes 8 train_baseline.py
+uv run accelerate launch train_baseline.py
 ```
 
 ### 2. On-policy KD
 
 ```bash
-uv run accelerate launch --num_processes 8 train_onpolicy.py
+uv run accelerate launch train_onpolicy.py
 ```
 
 ### 3. Perplexity comparison (teacher vs PTQ vs KD vs on-policy KD)
