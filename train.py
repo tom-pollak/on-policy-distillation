@@ -49,7 +49,7 @@ def main(conf: TrainConfig) -> None:
         torch_dtype=dtype,
         device_map={"": local_rank},
     )
-    quantize_(student_model, conf.get_qat_config())
+    quantize_(student_model, conf.get_quant_config())
 
     lora_config = LoraConfig(
         r=16,
