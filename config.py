@@ -50,7 +50,7 @@ class TrainConfig(SharedConfig):
     max_steps: int = 500
 
     # batching / optimisation
-    per_device_train_batch_size: int = 6
+    per_device_train_batch_size: int = 4
     gradient_accumulation_steps: int = 2
     learning_rate: float = 1.0e-5
     weight_decay: float = 0.0
