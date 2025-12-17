@@ -44,7 +44,7 @@ def main(conf: TrainConfig = TrainConfig()) -> None:
         conf.model_name,
         torch_dtype=dtype,
         device_map={"": local_rank},
-        quantization_config=TorchAoConfig(quant_type=conf.get_quant_config()),
+        quantization_config=TorchAoConfig(quant_type=conf.get_qat_config()),
     )
 
     lora_config = LoraConfig(

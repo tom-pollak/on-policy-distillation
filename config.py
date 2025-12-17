@@ -3,6 +3,7 @@ from typing import Literal
 
 from pydantic_config import BaseConfig
 from torchao.quantization import Int4WeightOnlyConfig
+from torchao.quantization.qat import QATConfig
 from torchao.prototype.mx_formats.inference_workflow import NVFP4WeightOnlyConfig
 
 
@@ -19,6 +20,10 @@ class SharedConfig(BaseConfig):
                 return Int4WeightOnlyConfig()
             case "nvfp4":
                 return NVFP4WeightOnlyConfig(use_dynamic_per_tensor_scale=True)
+
+    def get_qat_config(self):
+        """Get QAT config for training with fake quantization."""
+        return QATConfig(self.get_quant_config(), step="prepare")
 
 
 class TrainConfig(SharedConfig):
