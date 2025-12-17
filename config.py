@@ -5,6 +5,7 @@ from pydantic_config import BaseConfig
 from torchao.quantization import Int4WeightOnlyConfig
 from torchao.quantization.qat import QATConfig
 from torchao.prototype.mx_formats.inference_workflow import NVFP4WeightOnlyConfig
+from transformers import BitsAndBytesConfig
 
 
 class SharedConfig(BaseConfig):
@@ -18,6 +19,13 @@ class SharedConfig(BaseConfig):
     @property
     def quant_backend(self) -> Literal["torchao", "bitsandbytes"]:
         return "bitsandbytes" if self.quant_type.startswith("bnb_") else "torchao"
+
+    def get_bnb_config(self, dtype):
+        return BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_compute_dtype=dtype,
+            bnb_4bit_quant_type=self.quant_type.removeprefix("bnb_"),
+        )
 
     def get_torchao_config(self):
         """Get torchao quantization config."""

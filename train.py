@@ -7,8 +7,9 @@ from datasets import load_dataset
 from peft import LoraConfig, get_peft_model
 from pydantic import validate_call
 from pydantic_config import parse_argv
-from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+from transformers import AutoModelForCausalLM, AutoTokenizer
 from trl.experimental.gkd import GKDConfig, GKDTrainer
+from torchao.quantization import quantize_
 
 from config import TrainConfig
 
@@ -33,30 +34,23 @@ def main(conf: TrainConfig) -> None:
 
     dataset = load_dataset(conf.dataset_name, split="train")
 
-    # Teacher model
+    # Teacher
     teacher_model = AutoModelForCausalLM.from_pretrained(
         conf.model_name,
         dtype=dtype,
     )
 
-    # Student model (quantization + LoRA)
+    # Student
     if conf.quant_backend == "bitsandbytes":
-        bnb_config = BitsAndBytesConfig(
-            load_in_4bit=True,
-            bnb_4bit_compute_dtype=dtype,
-            bnb_4bit_quant_type=conf.quant_type.removeprefix("bnb_"),
-        )
         student_model = AutoModelForCausalLM.from_pretrained(
             conf.model_name,
-            quantization_config=bnb_config,
+            quantization_config=conf.get_bnb_config(dtype),
             device_map=device_map,
         )
     else:
-        from torchao.quantization import quantize_
-
         student_model = AutoModelForCausalLM.from_pretrained(
             conf.model_name,
-            torch_dtype=dtype,
+            dtype=dtype,
         )
         quantize_(student_model, conf.get_torchao_qat_config())
 
