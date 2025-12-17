@@ -72,11 +72,8 @@ def main(conf: TrainConfig) -> None:
         torch_compile_backend="inductor",
         # torch_compile_mode="max-autotune",
         report_to=["wandb"],
-        ddp_find_unused_parameters=False,
+        fsdp="shard_grad_op",
         run_name=conf.output_dir.stem,
-        # TODO: revisit gradient checkpointing - DDP + LoRA + checkpointing causes
-        # "parameter marked ready twice" error even with use_reentrant=False.
-        gradient_checkpointing=False,
         **conf.trainer_kwargs(),
     )
 
