@@ -61,13 +61,6 @@ def run_lm_eval(
     }
 
 
-def do_log(tasks, table, name, res):
-    print(f"{name:25s} | " + " | ".join(f"{res[t]:8.4f}" for t in tasks))
-    table.add_data(name, *[res[t] for t in tasks])
-    for task in tasks:
-        wandb.summary[f"{name}/{task}"] = res[task]
-
-
 @validate_call
 def main(conf: EvalConfig = EvalConfig()) -> None:
     wandb.init(
@@ -85,19 +78,37 @@ def main(conf: EvalConfig = EvalConfig()) -> None:
     print(f"{'model':25s} | " + " | ".join(f"{t[:8]:>8s}" for t in conf.tasks))
     table = wandb.Table(columns=["model"] + conf.tasks)
 
-    # Evaluate each LoRA adapter (merged with base model, then quantized)
-    for lora_path in conf.lora_paths:
-        model = load_model(
-            str(lora_path), dtype, quant_config=quant_config, base_model=conf.model_name
-        )
-        res = run_lm_eval(
-            model,
-            tokenizer,
-            conf.tasks,
-        )
+    def eval_and_log(name: str, model):
+        res = run_lm_eval(model, tokenizer, conf.tasks)
+        # log
+        print(f"{name:25s} | " + " | ".join(f"{res[t]:8.4f}" for t in conf.tasks))
+        table.add_data(name, *[res[t] for t in conf.tasks])
+        for task in conf.tasks:
+            wandb.summary[f"{name}/{task}"] = res[task]
+
         del model
-        do_log(conf.tasks, table, lora_path.stem, res)
         torch.cuda.empty_cache()
+
+    # Teacher model (unquantized)
+    eval_and_log("teacher", load_model(conf.model_name, dtype))
+
+    # Teacher model (quantized) - PTQ baseline
+    eval_and_log(
+        "teacher_ptq",
+        load_model(conf.model_name, dtype, quant_config=quant_config),
+    )
+
+    # Evaluate each LoRA adapter
+    for lora_path in conf.lora_paths:
+        eval_and_log(
+            lora_path.stem,
+            load_model(
+                str(lora_path),
+                dtype,
+                quant_config=quant_config,
+                base_model=conf.model_name,
+            ),
+        )
 
     wandb.log({"eval_results": table})
     wandb.finish()
