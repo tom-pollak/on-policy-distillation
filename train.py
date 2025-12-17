@@ -96,4 +96,4 @@ def main(conf: TrainConfig = TrainConfig()) -> None:
 
 
 if __name__ == "__main__":
-    main(**parse_argv())
+    main(TrainConfig(**parse_argv()))
