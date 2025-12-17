@@ -43,11 +43,9 @@ def main(conf: TrainConfig) -> None:
     )
 
     # Student model (QAT fake quantization + LoRA)
-    local_rank = int(os.environ.get("LOCAL_RANK", 0))
     student_model = AutoModelForCausalLM.from_pretrained(
         conf.model_name,
         torch_dtype=dtype,
-        device_map={"": local_rank},
     )
     quantize_(student_model, conf.get_quant_config())
 
