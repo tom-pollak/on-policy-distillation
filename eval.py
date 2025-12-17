@@ -7,6 +7,7 @@ from pydantic_config import parse_argv
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from peft import PeftModel
 from torchao.quantization import quantize_
+from transformers import BitsAndBytesConfig
 
 from config import EvalConfig
 
@@ -70,7 +71,7 @@ def main(conf: EvalConfig) -> None:
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    quant_config = conf.get_quant_config()
+    quant_config = conf.get_torchao_config()
 
     # header
     print(f"{'model':25s} | " + " | ".join(f"{t[:8]:>8s}" for t in conf.tasks))

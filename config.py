@@ -21,6 +21,7 @@ class SharedConfig(BaseConfig):
         return "bitsandbytes" if self.quant_type.startswith("bnb_") else "torchao"
 
     def get_bnb_config(self, dtype):
+        assert self.quant_backend == "bitsandbytes"
         return BitsAndBytesConfig(
             load_in_4bit=True,
             bnb_4bit_compute_dtype=dtype,
@@ -29,6 +30,7 @@ class SharedConfig(BaseConfig):
 
     def get_torchao_config(self):
         """Get torchao quantization config."""
+        assert self.quant_backend == "torchao"
         match self.quant_type:
             case "int4":
                 return Int4WeightOnlyConfig()
