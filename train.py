@@ -37,20 +37,28 @@ def main(conf: TrainConfig) -> None:
     teacher_model = AutoModelForCausalLM.from_pretrained(
         conf.model_name,
         dtype=dtype,
-        trust_remote_code=True,
     )
 
-    # Student model (4-bit quantization + LoRA)
-    bnb_config = BitsAndBytesConfig(
-        load_in_4bit=True,
-        bnb_4bit_compute_dtype=dtype,
-        bnb_4bit_quant_type="fp4",
-    )
-    student_model = AutoModelForCausalLM.from_pretrained(
-        conf.model_name,
-        quantization_config=bnb_config,
-        device_map=device_map,
-    )
+    # Student model (quantization + LoRA)
+    if conf.quant_backend == "bitsandbytes":
+        bnb_config = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_compute_dtype=dtype,
+            bnb_4bit_quant_type=conf.quant_type.removeprefix("bnb_"),
+        )
+        student_model = AutoModelForCausalLM.from_pretrained(
+            conf.model_name,
+            quantization_config=bnb_config,
+            device_map=device_map,
+        )
+    else:
+        from torchao.quantization import quantize_
+
+        student_model = AutoModelForCausalLM.from_pretrained(
+            conf.model_name,
+            torch_dtype=dtype,
+        )
+        quantize_(student_model, conf.get_qat_config())
 
     lora_config = LoraConfig(
         r=16,
@@ -74,12 +82,11 @@ def main(conf: TrainConfig) -> None:
     training_args = GKDConfig(
         bf16=conf.mixed_precision == "bf16",
         fp16=conf.mixed_precision == "fp16",
-        torch_compile=True,
-        torch_compile_backend="inductor",
-        # torch_compile_mode="max-autotune",
+        # torch_compile=True,
+        # torch_compile_backend="inductor",
         report_to=["wandb"],
-        ddp_find_unused_parameters=False,
         run_name=conf.output_dir.stem,
+        ddp_find_unused_parameters=False,
         **conf.trainer_kwargs(),
     )
 

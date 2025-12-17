@@ -11,20 +11,27 @@ class SharedConfig(BaseConfig):
     """Base config with shared model and quantization settings."""
 
     model_name: str = "Qwen/Qwen2.5-7B-Instruct"
-    quant_type: Literal["int4", "nvfp4"] = "int4"  # nvfp4 requires B200 GPU
+    # torchao: int4, nvfp4 (B200 only) | bitsandbytes: bnb_fp4, bnb_nf4
+    quant_type: Literal["int4", "nvfp4", "bnb_fp4", "bnb_nf4"] = "bnb_nf4"
     wandb_project: str = "on-policy-distillation"
 
-    def get_quant_config(self):
-        """Get the appropriate torchao quantization config."""
+    @property
+    def quant_backend(self) -> Literal["torchao", "bitsandbytes"]:
+        return "bitsandbytes" if self.quant_type.startswith("bnb_") else "torchao"
+
+    def get_torchao_config(self):
+        """Get torchao quantization config."""
         match self.quant_type:
             case "int4":
                 return Int4WeightOnlyConfig()
             case "nvfp4":
                 return NVFP4WeightOnlyConfig(use_dynamic_per_tensor_scale=True)
+            case _:
+                raise ValueError(f"No torchao config for {self.quant_type}")
 
     def get_qat_config(self):
         """Get QAT config for training with fake quantization."""
-        return QATConfig(self.get_quant_config(), step="prepare")
+        return QATConfig(self.get_torchao_config(), step="prepare")
 
 
 class TrainConfig(SharedConfig):
