@@ -9,7 +9,8 @@ from datasets import load_dataset
 from peft import LoraConfig, get_peft_model
 from pydantic import validate_call
 from pydantic_config import parse_argv
-from transformers import AutoModelForCausalLM, AutoTokenizer, TorchAoConfig
+from torchao.quantization import quantize_
+from transformers import AutoModelForCausalLM, AutoTokenizer
 from trl.experimental.gkd import GKDConfig, GKDTrainer
 
 from config import TrainConfig
@@ -34,18 +35,18 @@ def main(conf: TrainConfig = TrainConfig()) -> None:
     # Teacher model
     teacher_model = AutoModelForCausalLM.from_pretrained(
         conf.model_name,
-        dtype=dtype,
+        torch_dtype=dtype,
         trust_remote_code=True,
     )
 
-    # Student model (quantized + LoRA)
+    # Student model (QAT fake quantization + LoRA)
     local_rank = int(os.environ.get("LOCAL_RANK", 0))
     student_model = AutoModelForCausalLM.from_pretrained(
         conf.model_name,
         torch_dtype=dtype,
         device_map={"": local_rank},
-        quantization_config=TorchAoConfig(quant_type=conf.get_qat_config()),
     )
+    quantize_(student_model, conf.get_qat_config())
 
     lora_config = LoraConfig(
         r=16,
