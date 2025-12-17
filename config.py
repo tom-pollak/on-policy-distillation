@@ -29,7 +29,7 @@ class SharedConfig(BaseConfig):
             case _:
                 raise ValueError(f"No torchao config for {self.quant_type}")
 
-    def get_qat_config(self):
+    def get_torchao_qat_config(self):
         """Get QAT config for training with fake quantization."""
         return QATConfig(self.get_torchao_config(), step="prepare")
 
