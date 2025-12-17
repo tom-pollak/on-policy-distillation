@@ -90,7 +90,6 @@ def main(conf: TrainConfig) -> None:
 
     trainer.train()
     trainer.save_model(str(conf.output_dir))
-    tokenizer.save_pretrained(str(conf.output_dir))
 
 
 if __name__ == "__main__":
