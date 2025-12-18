@@ -94,6 +94,7 @@ class TrainConfig(SharedConfig):
 
     # trainer
     max_steps: int = 500
+    max_length: int = 1024
 
     # batching / optimisation
     per_device_train_batch_size: int = 4

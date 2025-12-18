@@ -13,6 +13,32 @@ from trl.experimental.gkd import GKDConfig, GKDTrainer
 from config import TrainConfig, Tee
 
 
+def filter_dataset(dataset, tokenizer, max_length, min_response_tokens=32):
+    # Skip samples with no conversation turns
+    def more_than_one_message(example):
+        return len(example.get("messages", [])) > 0
+
+    # Skip samples with empty message content (whitespace-only).
+    # Empty prompts cause IndexError in model.generate() when it tries to check
+    # inputs_tensor[:, -1] but dimension 1 has size 0.
+    def non_empty_message(example):
+        return all(m.get("content", "").strip() for m in example["messages"])
+
+    # Skip samples where prompt is too long to leave room for response tokens.
+    # GKDTrainer.compute_loss does: logits[:, prompt_len - 1 : -1, :]
+    # If prompt_len >= seq_len, this produces an empty tensor -> IndexError
+    def has_room_for_response(example):
+        prompt_msgs = [m for m in example["messages"] if m["role"] != "assistant"]
+        prompt_text = tokenizer.apply_chat_template(
+            prompt_msgs, tokenize=False, add_generation_prompt=True
+        )
+        prompt_len = len(tokenizer.encode(prompt_text, add_special_tokens=False))
+        return prompt_len < max_length - min_response_tokens
+
+    filters = [more_than_one_message, non_empty_message, has_room_for_response]
+    return dataset.filter(lambda x: all(f(x) for f in filters))
+
+
 @validate_call
 def main(cfg: TrainConfig) -> None:
     cfg.output_dir.mkdir(parents=True, exist_ok=True)
@@ -31,14 +57,7 @@ def main(cfg: TrainConfig) -> None:
         tokenizer.pad_token = tokenizer.eos_token
 
     dataset = load_dataset(cfg.dataset_name, split="train")
-    dataset = dataset.filter(
-        lambda x: len(x.get("messages", [])) > 0
-        and all(
-            m.get("content", "").strip()
-            for m in x["messages"]
-            if m.get("role") == "user"
-        )
-    )
+    dataset = filter_dataset(dataset, tokenizer, max_length=cfg.max_length)
 
     # Models
     teacher = cfg.load_model()
