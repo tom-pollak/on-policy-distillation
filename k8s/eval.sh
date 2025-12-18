@@ -13,7 +13,7 @@ source /root/.local/bin/env
 cd /data/tomp/on-policy-distillation/
 source .env
 uv sync
-uv run python eval.py $@
+uv run accelerate launch eval.py $@
 "
 
 cmd_b64=$(printf '%s' "$cmd" | base64)

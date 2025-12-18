@@ -24,15 +24,11 @@ def load_model(
     """
     if base_model is not None:
         # Load base model in full precision, merge LoRA, then quantize if needed
-        model = AutoModelForCausalLM.from_pretrained(
-            base_model, dtype=dtype, device_map="auto"
-        )
+        model = AutoModelForCausalLM.from_pretrained(base_model, dtype=dtype)
         model = PeftModel.from_pretrained(model, path)
         model = model.merge_and_unload()
     else:
-        model = AutoModelForCausalLM.from_pretrained(
-            path, dtype=dtype, device_map="auto"
-        )
+        model = AutoModelForCausalLM.from_pretrained(path, dtype=dtype)
 
     if quant_config is not None:
         quantize_(model, quant_config)

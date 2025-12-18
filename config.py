@@ -62,7 +62,10 @@ class SharedConfig(BaseConfig):
             return QATConfig(self._get_torchao_config(), step="prepare")
 
     def load_model(self):
-        return AutoModelForCausalLM.from_pretrained(self.model_name, dtype=self.dtype)
+        local_rank = int(os.environ.get("LOCAL_RANK", 0))
+        return AutoModelForCausalLM.from_pretrained(
+            self.model_name, torch_dtype=self.dtype, device_map={"": local_rank}
+        )
 
     def load_quant_model(self, method: Literal["qat", "ptq"] = "qat"):
         quant_config = (
