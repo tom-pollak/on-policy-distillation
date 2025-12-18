@@ -65,7 +65,7 @@ class SharedConfig(BaseConfig):
     def load_model(self):
         local_rank = int(os.environ.get("LOCAL_RANK", 0))
         return AutoModelForCausalLM.from_pretrained(
-            self.model_name, torch_dtype=self.dtype, device_map={"": local_rank}
+            self.model_name, dtype=self.dtype, device_map={"": local_rank}
         )
 
     def load_quant_model(self, method: Literal["qat", "ptq"] = "qat"):
