@@ -78,13 +78,14 @@ def main(cfg: EvalConfig) -> None:
     # header
     if state.is_main_process:
         print(f"{'model':25s} | " + " | ".join(f"{t[:8]:>8s}" for t in cfg.tasks))
-    table = (
-        wandb.Table(columns=["model"] + cfg.tasks) if state.is_main_process else None
-    )
+        table = wandb.Table(columns=["model"] + cfg.tasks)
+    else:
+        table = None
 
     def eval_and_log(name: str, model):
         res = run_lm_eval(model, tokenizer, cfg.tasks)
         if state.is_main_process:
+            assert table is not None
             print(f"{name:25s} | " + " | ".join(f"{res[t]:8.4f}" for t in cfg.tasks))
             table.add_data(name, *[res[t] for t in cfg.tasks])
             for task in cfg.tasks:
