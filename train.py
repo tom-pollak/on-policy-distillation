@@ -8,9 +8,8 @@ from peft import LoraConfig, get_peft_model
 from pydantic import validate_call
 from pydantic_config import parse_argv
 from transformers import AutoTokenizer
-from trl.experimental.gkd import GKDConfig, GKDTrainer
-
 from config import TrainConfig, Tee
+from trainer import MinTokensGKDConfig as GKDConfig, MinTokensGKDTrainer as GKDTrainer
 
 
 def filter_dataset(dataset, tokenizer, max_length, min_response_tokens=32):

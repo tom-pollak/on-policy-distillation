@@ -113,6 +113,7 @@ class TrainConfig(SharedConfig):
     # sampling
     max_new_tokens: int = 128
     min_new_tokens: int = 16
+    include_tokens_per_second: bool = True
 
     output_dir: Path = Path("./qwen_onpolicy_kd")
 
