@@ -21,7 +21,7 @@ uv run accelerate launch train.py --lmbda 0 --output_dir qwen_kd_baseline --quan
 ### 2. On-policy KD
 
 ```bash
-uv run accelerate launch train.py --lmbda 1 --output_dir qwen_onpolicy_kd --quant_type int4
+uv run accelerate launch train.py --lmbda 1 --output_dir qwen_onpolicy_4b_int4 --quant_type int4
 ```
 
 ### 3. Perplexity comparison (teacher vs PTQ vs KD vs on-policy KD)

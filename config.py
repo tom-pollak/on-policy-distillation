@@ -107,7 +107,6 @@ class TrainConfig(SharedConfig):
     save_steps: int = 100
 
     # sampling
-    temperature: float = 1.0
     max_new_tokens: int = 128
 
     output_dir: Path = Path("./qwen_onpolicy_kd")
