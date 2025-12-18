@@ -27,13 +27,22 @@ def filter_dataset(dataset, tokenizer, max_length, min_response_tokens=32):
     # Skip samples where prompt is too long to leave room for response tokens.
     # GKDTrainer.compute_loss does: logits[:, prompt_len - 1 : -1, :]
     # If prompt_len >= seq_len, this produces an empty tensor -> IndexError
+    # Also verify that after truncation, actual response tokens remain.
     def has_room_for_response(example):
-        prompt_msgs = [m for m in example["messages"] if m["role"] != "assistant"]
+        messages = example["messages"]
+        prompt_msgs = [m for m in messages if m["role"] != "assistant"]
         prompt_text = tokenizer.apply_chat_template(
             prompt_msgs, tokenize=False, add_generation_prompt=True
         )
+        full_text = tokenizer.apply_chat_template(messages, tokenize=False)
         prompt_len = len(tokenizer.encode(prompt_text, add_special_tokens=False))
-        return prompt_len < max_length - min_response_tokens
+        full_len = len(tokenizer.encode(full_text, add_special_tokens=False))
+        # After truncation to max_length, how many response tokens remain?
+        response_len = min(full_len, max_length) - prompt_len
+        return (
+            prompt_len < max_length - min_response_tokens
+            and response_len >= min_response_tokens
+        )
 
     filters = [more_than_one_message, non_empty_message, has_room_for_response]
     return dataset.filter(lambda x: all(f(x) for f in filters))
