@@ -39,3 +39,8 @@ uv run python eval.py
 ```
 
 ## Results
+
+```
+model                     | hellaswa | arc_easy | arc_chal | winogran |     mmlu
+teacher                   |   0.5262 |   0.8308 |   0.5572 |   0.6835 |   0.7067
+```
