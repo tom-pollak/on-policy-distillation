@@ -1,3 +1,5 @@
+import os
+import logging
 import torch
 import wandb
 from accelerate import PartialState
@@ -65,6 +67,9 @@ def main(cfg: EvalConfig) -> None:
     if state.is_main_process:
         wandb.init(project=cfg.wandb_project, name="eval_comparison", job_type="eval")
         Tee.redirect_stdout_stderr("./eval.log")
+    else:
+        logging.disable(logging.WARNING)
+        os.environ["TQDM_DISABLE"] = "1"
 
     tokenizer = AutoTokenizer.from_pretrained(cfg.model_name, use_fast=True)
     if tokenizer.pad_token is None:
