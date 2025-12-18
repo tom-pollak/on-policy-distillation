@@ -141,9 +141,15 @@ class EvalConfig(SharedConfig):
 
 
 class Tee:
-    def __init__(self, file_path, stream):
-        self.file = open(file_path, "a")
-        self.stream = stream
+    def __init__(self, file_path, stream, main_only=False):
+        local_rank = int(os.environ.get("LOCAL_RANK", 0))
+        self.active = not main_only or local_rank == 0
+        if self.active:
+            self.stream = stream
+            self.file = open(file_path, "a")
+        else:
+            devnull = open(os.devnull, "w")
+            self.stream = self.file = devnull
 
     def write(self, data):
         self.stream.write(data)
@@ -155,6 +161,6 @@ class Tee:
         self.file.flush()
 
     @classmethod
-    def redirect_stdout_stderr(cls, log_path):
-        sys.stdout = cls(log_path, sys.stdout)
-        sys.stderr = cls(log_path, sys.stderr)
+    def redirect_stdout_stderr(cls, log_path, main_only=False):
+        sys.stdout = cls(log_path, sys.stdout, main_only)
+        sys.stderr = cls(log_path, sys.stderr, main_only)
