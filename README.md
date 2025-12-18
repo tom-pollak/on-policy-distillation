@@ -12,6 +12,10 @@ torch transformers datasets accelerate bitsandbytes peft scipy pydantic pydantic
 
 ## Training
 
+```
+k8s/train.sh qwen_onpolicy_4b_int4 --lmbda 1 --quant_type int4
+```
+
 ### 1. Off-policy KD baseline
 
 ```bash

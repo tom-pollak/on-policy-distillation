@@ -7,7 +7,6 @@ from pydantic_config import parse_argv
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from peft import PeftModel
 from torchao.quantization import quantize_
-from transformers import BitsAndBytesConfig
 
 from config import EvalConfig, Tee
 
