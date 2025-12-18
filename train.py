@@ -57,7 +57,7 @@ def main(cfg: TrainConfig) -> None:
     torch.cuda.manual_seed_all(cfg.seed)
 
     os.environ["WANDB_PROJECT"] = cfg.wandb_project
-    os.environ["WANDB_JOB_TYPE"] = "train"
+    os.environ["WANDB_TAGS"] = "train"
 
     # Tokenizer
     tokenizer = AutoTokenizer.from_pretrained(cfg.model_name, use_fast=True)

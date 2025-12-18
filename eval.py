@@ -65,7 +65,7 @@ def main(cfg: EvalConfig) -> None:
     state = PartialState()
 
     if state.is_main_process:
-        wandb.init(project=cfg.wandb_project, name="eval_comparison", job_type="eval")
+        wandb.init(project=cfg.wandb_project, name="eval_comparison", tags=["eval"])
         Tee.redirect_stdout_stderr("./eval.log")
     else:
         logging.disable(logging.WARNING)
