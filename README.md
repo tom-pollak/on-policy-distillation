@@ -43,5 +43,7 @@ uv run python eval.py
 ```
 model                     | hellaswa | arc_easy | arc_chal | winogran |     mmlu
 teacher                   |   0.5262 |   0.8308 |   0.5572 |   0.6835 |   0.7067
-teacher_ptq               |          |          |   0.5410 |          |
+ptq_bnb_nf4               |          |          |   0.5410 |          |
+int4_lmbda_0                                    |   0.5375
+int4_lmbda_1                                    |   0.5384
 ```
