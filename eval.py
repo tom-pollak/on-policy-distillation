@@ -94,8 +94,8 @@ def main(cfg: EvalConfig) -> None:
         del model
 
     # # Teacher model (unquantized)
-    # eval_and_log("teacher", cfg.load_model())
-    # torch.cuda.empty_cache()
+    eval_and_log("teacher", cfg.load_model())
+    torch.cuda.empty_cache()
 
     # # Teacher model (quantized) - PTQ baseline
     eval_and_log(
@@ -105,14 +105,14 @@ def main(cfg: EvalConfig) -> None:
     torch.cuda.empty_cache()
 
     # Evaluate each LoRA adapter
-    # for lora_path in cfg.lora_paths:
-    #     model = cfg.load_model()
-    #     model = PeftModel.from_pretrained(model, lora_path)
-    #     model = model.merge_and_unload()
-    #     quantize_(model, cfg._get_torchao_config())
-    #     eval_and_log(lora_path.stem, model)
-    #     del model
-    #     torch.cuda.empty_cache()
+    for lora_path in cfg.lora_paths:
+        model = cfg.load_model()
+        model = PeftModel.from_pretrained(model, lora_path)
+        model = model.merge_and_unload()
+        quantize_(model, cfg._get_torchao_config())
+        eval_and_log(lora_path.stem, model)
+        del model
+        torch.cuda.empty_cache()
 
     if state.is_main_process:
         wandb.log({"eval_results": table})
