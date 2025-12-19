@@ -154,7 +154,12 @@ class EvalConfig(SharedConfig):
     @field_validator("lora_paths", "tasks", mode="before")
     @classmethod
     def ensure_list(cls, v):
-        return [v] if not isinstance(v, list) else v
+        if isinstance(v, str):
+            return v.split(" ")
+        elif isinstance(v, list):
+            return [v]
+        else:
+            return v
 
 
 class Tee:
