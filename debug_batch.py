@@ -144,6 +144,10 @@ filtered_dataset = filter_dataset(raw_dataset, tokenizer, max_length=cfg.max_len
 print(f"Filtered dataset size: {len(filtered_dataset)}")
 print()
 
+# Calculate range around error step
+start_sample = (STEP_WITH_ERROR - 2) * samples_per_step  # 2 steps before
+end_sample = (STEP_WITH_ERROR + 2) * samples_per_step    # 2 steps after
+
 # Adjust range if it exceeds dataset size
 end_sample = min(end_sample, len(filtered_dataset))
 start_sample = max(0, start_sample)
