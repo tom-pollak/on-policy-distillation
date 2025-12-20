@@ -144,23 +144,37 @@ filtered_dataset = filter_dataset(raw_dataset, tokenizer, max_length=cfg.max_len
 print(f"Filtered dataset size: {len(filtered_dataset)}")
 print()
 
-# Calculate range around error step
-start_sample = (STEP_WITH_ERROR - 2) * samples_per_step  # 2 steps before
-end_sample = (STEP_WITH_ERROR + 2) * samples_per_step    # 2 steps after
+# Simulate shuffled DataLoader (Trainer shuffles with seed)
+print("Simulating shuffled DataLoader...")
+g = torch.Generator()
+g.manual_seed(cfg.seed)  # seed=42
+dataset_size = len(filtered_dataset)
+shuffled_indices = torch.randperm(dataset_size, generator=g).tolist()
 
-# Adjust range if it exceeds dataset size
-end_sample = min(end_sample, len(filtered_dataset))
-start_sample = max(0, start_sample)
+# With DistributedSampler, each GPU gets every Nth sample
+# GPU i gets indices: i, i+8, i+16, ...
+# At step 303, each GPU has consumed 303 * batch * grad_accum samples
+samples_per_gpu_per_step = cfg.per_device_train_batch_size * cfg.gradient_accumulation_steps
 
-print(f"Adjusted sample range: [{start_sample}, {end_sample})")
-print(f"Analyzing {end_sample - start_sample} samples...")
+# Get indices for all GPUs at step 303 (and a few steps around it)
+step_indices = []
+for step in range(STEP_WITH_ERROR - 1, STEP_WITH_ERROR + 2):  # steps 302, 303, 304
+    for rank in range(NUM_GPUS):
+        rank_indices = shuffled_indices[rank::NUM_GPUS]
+        start = step * samples_per_gpu_per_step
+        end = start + samples_per_gpu_per_step
+        if end <= len(rank_indices):
+            step_indices.extend(rank_indices[start:end])
+
+step_indices = list(set(step_indices))  # dedupe
+print(f"Checking {len(step_indices)} unique indices around step {STEP_WITH_ERROR}")
 print()
 
-# Analyze samples in range
+# Analyze these specific samples
 problematic_samples = []
 all_analyses = []
 
-for idx in range(start_sample, end_sample):
+for idx in step_indices:
     analysis = analyze_sample(idx, filtered_dataset[idx])
     all_analyses.append(analysis)
 
