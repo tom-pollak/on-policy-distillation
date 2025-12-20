@@ -13,18 +13,18 @@ torch transformers datasets accelerate bitsandbytes peft scipy pydantic pydantic
 ## Training
 
 ```
-k8s/train.sh qwen_onpolicy_4b_int4 --lmbda 1 --quant_type int4
+k8s/train.sh lmbda_1_int4 --lmbda 1 --quant_type int4
 
-k8s/train.sh qwen_kd_baseline --lmbda 0 --quant_type int4
+k8s/train.sh lmbda_0_int4 --lmbda 0 --quant_type int4
 
-k8s/train.sh qwen_kd_half --lmbda 0.5 --quant_type int4
+k8s/train.sh lmbda_05_int4 --lmbda 0.5 --quant_type int4
 
-k8s/train.sh qwen_onpolicy_4b_bnb_fp4 --lmbda 1 --quant_type bnb_fp4
+k8s/train.sh lmbda_1_bnb_fp4 --lmbda 1 --quant_type bnb_fp4
 
-k8s/train.sh qwen_offpolicy_4b_bnb_fp4 --lmbda 0 --quant_type bnb_fp4
+k8s/train.sh lmbda_0_bnb_fp4 --lmbda 0 --quant_type bnb_fp4
 ```
 
-k8s/eval.sh eval --lora_paths qwen_kd_baseline qwen_onpolicy_4b_int4
+k8s/eval.sh eval --lora_paths qwen_onpolicy_4b_int4 --lora_paths lmbda_1_int4 --lora_paths lmbda_0_int4 --lora_paths lmbda_05_int4 --lora_paths lmbda_1_bnb_fp4 --lora_paths lmbda_0_bnb_fp4
 
 ````
 
