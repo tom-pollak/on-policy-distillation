@@ -107,7 +107,7 @@ def main(cfg: EvalConfig) -> None:
     # Evaluate each LoRA adapter
     for lora_path in cfg.lora_paths:
         model = cfg.load_model()
-        model = PeftModel.from_pretrained(model, lora_path)
+        model = PeftModel.from_pretrained(model, str(lora_path))
         model = model.merge_and_unload()
         quantize_(model, cfg._get_torchao_config())
         eval_and_log(lora_path.stem, model)
@@ -126,7 +126,7 @@ if __name__ == "__main__":
             # "qwen_kd_baseline/checkpoint-300",
             # "qwen_onpolicy_4b_int4/checkpoint-300",
             "qwen_kd_half/checkpoint-300",
-            "qwen_offpolicy_4b_bnb_fp4/checkpoint-300",
+            # "qwen_offpolicy_4b_bnb_fp4/checkpoint-300",
             "qwen_onpolicy_4b_bnb_fp4/checkpoint-300",
         ],
         "tasks": "arc_challenge",
