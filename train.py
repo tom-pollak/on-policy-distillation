@@ -44,7 +44,7 @@ def filter_dataset(dataset, tokenizer, max_length, min_response_tokens=32):
         )
 
     filters = [more_than_one_message, non_empty_message, has_room_for_response]
-    return dataset.filter(lambda x: all(f(x) for f in filters))
+    return dataset.filter(lambda x: all(f(x) for f in filters), num_proc=os.cpu_count())
 
 
 @validate_call
