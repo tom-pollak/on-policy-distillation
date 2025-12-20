@@ -12,7 +12,7 @@ torch transformers datasets accelerate bitsandbytes peft scipy pydantic pydantic
 
 ## Training
 
-```
+```bash
 k8s/train.sh lmbda_1_int4 --lmbda 1 --quant_type int4
 
 k8s/train.sh lmbda_0_int4 --lmbda 0 --quant_type int4
@@ -24,15 +24,16 @@ k8s/train.sh lmbda_1_bnb_fp4 --lmbda 1 --quant_type bnb_fp4
 k8s/train.sh lmbda_0_bnb_fp4 --lmbda 0 --quant_type bnb_fp4
 ```
 
-k8s/eval.sh eval --lora_paths qwen_onpolicy_4b_int4 --lora_paths lmbda_1_int4 --lora_paths lmbda_0_int4 --lora_paths lmbda_05_int4 --lora_paths lmbda_1_bnb_fp4 --lora_paths lmbda_0_bnb_fp4
+```bash
+k8s/eval.sh eval --lora_paths dump/qwen_onpolicy_4b_int4 --lora_paths dump/lmbda_1_int4 --lora_paths dump/lmbda_0_int4 --lora_paths dump/lmbda_05_int4 --lora_paths dump/lmbda_1_bnb_fp4 --lora_paths dump/lmbda_0_bnb_fp4
 
-````
+```
 
 ### 1. Off-policy KD baseline
 
 ```bash
 uv run accelerate launch train.py --lmbda 0 --output_dir qwen_kd_baseline --quant_type int4
-````
+```
 
 ### 2. On-policy KD
 
