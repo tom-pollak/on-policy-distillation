@@ -17,6 +17,13 @@ k8s/train.sh qwen_onpolicy_4b_int4 --lmbda 1 --quant_type int4
 
 k8s/train.sh qwen_kd_baseline --lmbda 0 --quant_type int4
 
+k8s/train.sh qwen_kd_half --lmbda 0.5 --quant_type int4
+
+k8s/train.sh qwen_onpolicy_4b_bnb_fp4 --lmbda 1 --quant_type bnb_fp4
+
+k8s/train.sh qwen_offpolicy_4b_bnb_fp4 --lmbda 0 --quant_type bnb_fp4
+```
+
 k8s/eval.sh eval --lora_paths qwen_kd_baseline qwen_onpolicy_4b_int4
 ```
 
