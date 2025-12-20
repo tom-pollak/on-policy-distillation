@@ -27,20 +27,26 @@ def filter_dataset(dataset, tokenizer, max_length, min_response_tokens=32):
     # GKDTrainer.compute_loss does: logits[:, prompt_len - 1 : -1, :]
     # If prompt_len >= seq_len, this produces an empty tensor -> IndexError
     # Also verify that after truncation, actual response tokens remain.
+    #
+    # IMPORTANT: Use messages[:-1] to match DataCollatorForChatML's prompt definition.
+    # Also filter out samples where completion >= max_length, which causes the
+    # collator to set prompt_ids=[] -> empty tensor in model.generate().
     def has_room_for_response(example):
         messages = example["messages"]
-        prompt_msgs = [m for m in messages if m["role"] != "assistant"]
+        prompt_msgs = messages[:-1]  # match collator: all messages except last
         prompt_text = tokenizer.apply_chat_template(
             prompt_msgs, tokenize=False, add_generation_prompt=True
         )
         full_text = tokenizer.apply_chat_template(messages, tokenize=False)
         prompt_len = len(tokenizer.encode(prompt_text, add_special_tokens=False))
         full_len = len(tokenizer.encode(full_text, add_special_tokens=False))
+        completion_len = full_len - prompt_len
         # After truncation to max_length, how many response tokens remain?
         response_len = min(full_len, max_length) - prompt_len
         return (
             prompt_len < max_length - min_response_tokens
             and response_len >= min_response_tokens
+            and completion_len < max_length  # prevent collator from setting prompt_ids=[]
         )
 
     filters = [more_than_one_message, non_empty_message, has_room_for_response]
