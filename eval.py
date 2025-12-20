@@ -17,7 +17,9 @@ from config import EvalConfig, Tee
 
 def get_latest_checkpoint(output_dir: Path) -> tuple[Path, int]:
     """Find the latest checkpoint in the given output directory."""
-    checkpoint = max(output_dir.glob("checkpoint-*"), key=lambda p: int(p.name.split("-")[1]))
+    checkpoint = max(
+        output_dir.glob("checkpoint-*"), key=lambda p: int(p.name.split("-")[1])
+    )
     step = int(checkpoint.name.split("-")[1])
     return checkpoint, step
 
@@ -129,15 +131,4 @@ def main(cfg: EvalConfig) -> None:
 
 
 if __name__ == "__main__":
-    # print(parse_argv())
-    raw = {
-        "lora_paths": [
-            # "qwen_kd_baseline/checkpoint-300",
-            # "qwen_onpolicy_4b_int4/checkpoint-300",
-            "qwen_kd_half/checkpoint-300",
-            # "qwen_offpolicy_4b_bnb_fp4/checkpoint-300",
-            "qwen_onpolicy_4b_bnb_fp4/checkpoint-300",
-        ],
-        "tasks": "arc_challenge",
-    }
-    main(EvalConfig(**raw))
+    main(EvalConfig(**parse_argv()))
