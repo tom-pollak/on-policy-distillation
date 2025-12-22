@@ -6,12 +6,10 @@ from typing import Literal
 import torch
 from pydantic import field_validator
 from pydantic_config import BaseConfig
-from transformers import AutoModelForCausalLM
-from torchao.quantization import Int4WeightOnlyConfig
-from torchao.quantization.qat import QATConfig
 from torchao.prototype.mx_formats.inference_workflow import NVFP4WeightOnlyConfig
-from transformers import BitsAndBytesConfig
-from torchao.quantization import quantize_
+from torchao.quantization import Int4WeightOnlyConfig, quantize_
+from torchao.quantization.qat import QATConfig
+from transformers import AutoModelForCausalLM, BitsAndBytesConfig
 
 
 class SharedConfig(BaseConfig):
@@ -145,6 +143,8 @@ class EvalConfig(SharedConfig):
 
     lora_paths: list[Path] = []
     eval_teacher: bool = True
+    # wandb
+    tags: list[str] = ["eval"]
     tasks: list[str] = [
         "hellaswag",
         "arc_easy",

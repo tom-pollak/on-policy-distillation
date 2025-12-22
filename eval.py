@@ -1,16 +1,17 @@
-import os
 import logging
+import os
 from pathlib import Path
+
 import torch
 import wandb
 from accelerate import PartialState
 from lm_eval import evaluator
 from lm_eval.models.huggingface import HFLM
+from peft import PeftModel
 from pydantic import validate_call
 from pydantic_config import parse_argv
-from transformers import AutoModelForCausalLM, AutoTokenizer
-from peft import PeftModel
 from torchao.quantization import quantize_
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from config import EvalConfig, Tee
 
@@ -75,7 +76,7 @@ def main(cfg: EvalConfig) -> None:
     state = PartialState()
 
     if state.is_main_process:
-        wandb.init(project=cfg.wandb_project, name="eval", tags=["eval"])
+        wandb.init(project=cfg.wandb_project, name="eval", tags=cfg.tags)
         Tee.redirect_stdout_stderr("./eval.log")
     else:
         logging.disable(logging.WARNING)
