@@ -2,7 +2,9 @@
 
 Knowledge distillation from FP32 teacher to MXFP4 student using on-policy (student-generated) data rather than static datasets.
 
-Standard KD trains on fixed datasets, causing distribution mismatch—the student never learns from its own mistakes. On-policy distillation fixes this by having the student generate sequences and learning from teacher feedback on those generations. Based on [GKD](https://arxiv.org/abs/2306.13649), we use `GKDTrainer` with `λ` controlling the interpolation: `λ=0` is off-policy (dataset only), `λ=1` is fully on-policy (student generations only).
+Standard KD trains on fixed datasets, causing distribution mismatch—the student never learns from its own mistakes. On-policy distillation fixes this by having the student generate sequences and learning from teacher feedback on those generations. Based on [GKD](https://arxiv.org/abs/2306.13649).
+
+- `λ` controlling the interpolation: `λ=0` is off-policy (dataset only), `λ=1` is fully on-policy (student generations only).
 
 ## Setup
 
