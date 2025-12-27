@@ -11,7 +11,8 @@ from peft import LoraConfig, get_peft_model
 from pydantic import validate_call
 from pydantic_config import parse_argv
 from transformers import AutoTokenizer
-from config import TrainConfig, Tee
+from config import EvalConfig, TrainConfig, Tee
+from eval import main as run_eval
 from trainer import MinTokensGKDConfig as GKDConfig, MinTokensGKDTrainer as GKDTrainer
 
 
@@ -59,6 +60,7 @@ def filter_dataset(dataset, tokenizer, max_length, min_response_tokens=32):
 
 @validate_call
 def main(cfg: TrainConfig) -> None:
+    state = PartialState()
     cfg.output_dir.mkdir(parents=True, exist_ok=True)
     Tee.redirect_stdout_stderr(cfg.output_dir / "train.log")
 
@@ -130,6 +132,21 @@ def main(cfg: TrainConfig) -> None:
     )
     trainer.train(resume_from_checkpoint=resume)
     trainer.save_model(str(cfg.output_dir))
+
+    if cfg.do_eval:
+        eval_cfg = EvalConfig(
+            model_name=cfg.model_name,
+            mixed_precision=cfg.mixed_precision,
+            quant_type=cfg.quant_type,
+            wandb_project=cfg.wandb_project,
+            lora_paths=[cfg.output_dir],
+            eval_teacher=False,
+            tags=cfg.tags + ["eval"],
+        )
+        run_eval(eval_cfg)
+
+    if state.is_main_process:
+        wandb.finish()
 
 
 if __name__ == "__main__":

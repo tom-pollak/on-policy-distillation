@@ -85,9 +85,6 @@ k8s/train.sh lmbda1_beta05 --lmbda 1 --beta 0.5 --quant-type int4 --max-new-toke
 k8s/eval.sh eval --quant-type int4 --lora-paths dump/lmbda_1_int4 --lora_paths dump/lmbda_0_int4 --lora_paths dump/lmbda_05_int4 --lora_paths dump/lmbda_1_bnb_fp4 --lora_paths dump/lmbda_0_bnb_fp4
 
 
-
-k8s/eval.sh eval --quant-type int4 --lora-paths dump/lmbda_0_int4 --lora_paths dump/lmbda_0_bnb_fp4
-
 # tomorrow
 k8s/eval.sh eval-base --quant-type int4 --lora-paths dump/lmbda_1_int4 --lora_paths dump/lmbda_05_int4 --lora_paths dump/lmbda_1_bnb_fp4 --no-eval-teacher --tags eval --tags qtypes
 k8s/eval.sh eval-lmbda1-batch --quant-type int4 --tags eval --no-eval-teacher --lora-paths dump/lmbda1_bs16 --lora-paths dump/lmbda1_bs32 --tags lmbda1 --tags batch

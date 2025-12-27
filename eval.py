@@ -78,9 +78,11 @@ def run_lm_eval(
 @validate_call
 def main(cfg: EvalConfig) -> None:
     state = PartialState()
+    own_wandb_run = wandb.run is None
 
     if state.is_main_process:
-        wandb.init(project=cfg.wandb_project, name="eval", tags=cfg.tags)
+        if own_wandb_run:
+            wandb.init(project=cfg.wandb_project, name="eval", tags=cfg.tags)
         Tee.redirect_stdout_stderr("./eval.log")
     else:
         logging.disable(logging.WARNING)
@@ -133,7 +135,8 @@ def main(cfg: EvalConfig) -> None:
 
     if state.is_main_process:
         wandb.log({"eval_results": table})
-        wandb.finish()
+        if own_wandb_run:
+            wandb.finish()
 
 
 if __name__ == "__main__":

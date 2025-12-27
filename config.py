@@ -123,6 +123,9 @@ class TrainConfig(SharedConfig):
     # wandb
     tags: list[str] = ["train"]
 
+    # eval
+    do_eval: bool = True
+
     def trainer_kwargs(self):
         return self.model_dump(
             exclude=[
@@ -134,6 +137,7 @@ class TrainConfig(SharedConfig):
                 "seed",
                 "use_lora",
                 "tags",
+                "do_eval",
             ]
         )
 
