@@ -57,7 +57,7 @@ def run_lm_eval(
     model,
     tokenizer,
     task_list: list[str],
-    num_fewshot: int = 0,
+    num_fewshot: int | None = None,
 ) -> dict:
     """Run lm-evaluation-harness on specified tasks."""
     lm = HFLM(pretrained=model, tokenizer=tokenizer)
