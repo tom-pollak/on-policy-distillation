@@ -141,7 +141,6 @@ def main(cfg: TrainConfig) -> None:
             wandb_project=cfg.wandb_project,
             lora_paths=[cfg.output_dir],
             eval_teacher=False,
-            tags=cfg.tags + ["eval"],
         )
         run_eval(eval_cfg)
 
