@@ -105,8 +105,6 @@ def main(cfg: EvalConfig) -> None:
             assert table is not None
             print(f"{name:25s} | " + " | ".join(f"{res[t]:8.4f}" for t in cfg.tasks))
             table.add_data(name, *[res[t] for t in cfg.tasks])
-            for task in cfg.tasks:
-                wandb.summary[f"{name}/{task}"] = res[task]
 
         del model
 
@@ -134,7 +132,7 @@ def main(cfg: EvalConfig) -> None:
         torch.cuda.empty_cache()
 
     if state.is_main_process:
-        wandb.log({"eval_results": table})
+        wandb.summary["eval_results"] = table
         if own_wandb_run:
             wandb.finish()
 
