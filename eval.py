@@ -2,6 +2,10 @@ import logging
 import os
 from pathlib import Path
 
+# Set cache directories before importing HF/lm_eval libraries
+os.environ["HF_HOME"] = "./hf-cache"
+os.environ["LM_HARNESS_CACHE_PATH"] = "./lm-eval-cache"
+
 import torch
 import wandb
 from accelerate import PartialState

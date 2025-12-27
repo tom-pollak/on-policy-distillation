@@ -1,6 +1,7 @@
 import os
 
 os.environ["TRL_EXPERIMENTAL_SILENCE"] = "1"
+os.environ["HF_HOME"] = "./hf-cache"
 
 import torch
 import wandb
