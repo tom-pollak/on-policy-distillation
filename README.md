@@ -1,10 +1,15 @@
 # On-Policy Quantization
 
-Knowledge distillation from FP32 teacher to MXFP4 student using on-policy (student-generated) data rather than static datasets.
+Knowledge distillation from FP32 teacher to INT4 student using on-policy (student-generated) data rather than static datasets.
 
 Standard KD trains on fixed datasets, causing distribution mismatch—the student never learns from its own mistakes. On-policy distillation fixes this by having the student generate sequences and learning from teacher feedback on those generations. Inspired by [GKD](https://arxiv.org/abs/2306.13649) and [on-policy distillation](https://thinkingmachines.ai/blog/on-policy-distillation/).
 
-- `λ` controlling the interpolation: `λ=0` is off-policy (dataset only), `λ=1` is fully on-policy (student generations only).
+## TL;DR: Null result
+
+> On-policy distillation doesn't provide significant benefits over off-policy distillation. Performance differences are noise (~0.5%)
+
+- Distribution mismatch is probably not a big issue when student teacher share same weights in a different precision.
+- On-policy rollouts are much more compute intensive than simple off-policy SFT, which is another disadvantage
 
 ## Setup
 
@@ -22,35 +27,59 @@ uv run accelerate launch train.py --lmbda 0 --output_dir qwen_kd_baseline --quan
 uv run accelerate launch train.py --lmbda 1 --output_dir qwen_onpolicy_4b_int4 --quant-type int4 --do-eval
 ```
 
-```
-model                     | hellaswa | arc_easy | arc_chal | winogran |     mmlu
-teacher                   |   0.5262 |   0.8308 |   0.5572 |   0.6835 |   0.7067
+## Results
 
-lmbda0_lr5e5_steps20k     |   0.5126 |   0.8199 |   0.5461 |   0.6638 |   0.6735
+`λ` controls data source interpolation:
 
-lmbda1_bs32               |   0.5119 |   0.8224 |   0.5401 |   0.6709 |   0.6839
-lmbda1_bs16               |   0.5131 |   0.8173 |   0.5427 |   0.6732 |   0.6847
+- `λ=0`: Off-policy (dataset sequences only)
+- `λ=1`: Fully on-policy (student-generated sequences only)
 
-lmbda0_lr5e6              |   0.5149 |   0.8165 |   0.5375 |   0.6875 |   0.6822
-lmbda0_lr1e5              |   0.5153 |   0.8178 |   0.5358 |   0.6780 |   0.6807
-lmbda0_lr2e5              |   0.5177 |   0.8157 |   0.5486 |   0.6717 |   0.6797
-lmbda0_lr5e5              |   0.5137 |   0.8148 |   0.5341 |   0.6725 |   0.6773
-lmbda0_lr1e4              |   0.5127 |   0.8106 |   0.5213 |   0.6701 |   0.6742
+### Baseline
 
+| Model          | HellaSwag | ARC-Easy | ARC-Challenge | WinoGrande | MMLU      |
+| -------------- | --------- | -------- | ------------- | ---------- | --------- |
+| Teacher (FP32) | 0.526     | 0.831    | 0.557         | 0.684      | **0.707** |
 
-lmbda0_beta1              |   0.5145 |   0.8203 |   0.5384 |   0.6835 |   0.6788
-lmbda0_beta05             |   0.5172 |   0.8220 |   0.5367 |   0.6788 |   0.6811
-lmbda0_beta0              |   0.5213 |   0.8232 |   0.5401 |   0.6780 |   0.6806
+### On-Policy (λ=1) vs Off-Policy (λ=0)
 
-lmbda1_beta05             |   0.5150 |   0.8194 |   0.5384 |   0.6748 |   0.6864
+Best runs from each approach (default hyperparameters, 10k steps):
 
-lmbda1_lr5e5              |   0.5118 |   0.8123 |   0.5256 |   0.6646 |   0.6776
-lmbda1_lr1e4              |   0.5105 |   0.8157 |   0.5367 |   0.6701 |   0.6769
+| Model            | HellaSwag | ARC-Easy | ARC-Challenge | WinoGrande | MMLU  |
+| ---------------- | --------- | -------- | ------------- | ---------- | ----- |
+| Off-policy (λ=0) | 0.515     | 0.819    | 0.538         | 0.678      | 0.681 |
+| On-policy (λ=1)  | 0.512     | 0.819    | 0.533         | 0.676      | 0.686 |
+| Mixed (λ=0.5)    | 0.516     | 0.819    | 0.533         | 0.680      | 0.686 |
 
-lmbda1_tok256             |   0.5127 |   0.8178 |   0.5299 |   0.6811 |   0.6824
-lmbda1_tok512             |   0.5141 |   0.8148 |   0.5358 |   0.6756 |   0.6845
+### Learning Rate Sweep (λ=0, off-policy)
 
-lmbda_1_int4              |   0.5121 |   0.8186 |   0.5333 |   0.6764 |   0.6855
-lmbda_05_int4             |   0.5160 |   0.8194 |   0.5333 |   0.6803 |   0.6857
-lmbda_1_int4              |   0.5121 |   0.8186 |   0.5333 |   0.6764 |   0.6855
-```
+| Learning Rate | HellaSwag | ARC-Easy | ARC-Challenge | WinoGrande | MMLU      |
+| ------------- | --------- | -------- | ------------- | ---------- | --------- |
+| 5e-6          | 0.515     | 0.817    | 0.538         | **0.688**  | **0.682** |
+| 1e-5          | 0.515     | 0.818    | 0.536         | 0.678      | 0.681     |
+| 2e-5          | **0.518** | 0.816    | **0.549**     | 0.672      | 0.680     |
+| 5e-5          | 0.514     | 0.815    | 0.534         | 0.673      | 0.677     |
+| 1e-4          | 0.513     | 0.811    | 0.521         | 0.670      | 0.674     |
+
+### Beta (KL coefficient) Sweep (λ=0)
+
+| Beta        | HellaSwag | ARC-Easy  | ARC-Challenge | WinoGrande | MMLU  |
+| ----------- | --------- | --------- | ------------- | ---------- | ----- |
+| 0.0 (no KL) | **0.521** | **0.823** | **0.540**     | 0.678      | 0.681 |
+| 0.5         | 0.517     | 0.822     | 0.537         | 0.679      | 0.681 |
+| 1.0         | 0.515     | 0.820     | 0.538         | **0.684**  | 0.679 |
+
+### On-Policy Hyperparameter Sweeps (λ=1)
+
+**Batch size:**
+
+| Batch Size | HellaSwag | ARC-Easy  | ARC-Challenge | WinoGrande | MMLU      |
+| ---------- | --------- | --------- | ------------- | ---------- | --------- |
+| 16         | 0.513     | 0.817     | **0.543**     | 0.673      | **0.685** |
+| 32         | 0.512     | **0.822** | 0.540         | 0.671      | 0.684     |
+
+**Rollout length (max new tokens):**
+
+| Tokens | HellaSwag | ARC-Easy  | ARC-Challenge | WinoGrande | MMLU      |
+| ------ | --------- | --------- | ------------- | ---------- | --------- |
+| 256    | 0.513     | **0.818** | 0.530         | **0.681**  | 0.682     |
+| 512    | **0.514** | 0.815     | **0.536**     | 0.676      | **0.685** |
