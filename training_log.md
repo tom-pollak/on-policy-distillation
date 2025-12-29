@@ -62,8 +62,21 @@ k8s/train.sh lmbda1_tok512 --lmbda 1 --quant-type int4 --max-new-tokens 512 --ta
 k8s/train.sh lmbda1_bs16 --lmbda 1 --gradient-accumulation-steps 4 --quant-type int4 --max-new-tokens 256 --tags sweep --tags batch
 k8s/train.sh lmbda1_bs32 --lmbda 1 --gradient-accumulation-steps 8 --quant-type int4 --max-new-tokens 256 --tags sweep --tags batch
 
-# Beta sanity check (1 run)
+# Beta
 k8s/train.sh lmbda1_beta05 --lmbda 1 --beta 0.5 --quant-type int4 --max-new-tokens 256 --tags sweep --tags beta  --per-device-train_batch-size 2 --gradient-accumulation-steps 4
+k8s/train.sh lmbda1_beta0 --lmbda 1 --beta 0.0 --quant-type int4 --max-new-tokens 256 --tags sweep --tags beta  --per-device-train_batch-size 2 --gradient-accumulation-steps 4
+```
+
+### Extended
+
+```bash
+k8s/train.sh lmbda1_lr5e6 --lmbda 1 --learning-rate 5e-6 --quant-type int4 --tags sweep --tags lr --tags lmbda1
+k8s/train.sh lmbda1_lr1e5 --lmbda 1 --learning-rate 1e-5 --quant-type int4  --tags sweep --tags lr --tags lmbda1
+k8s/train.sh lmbda05_beta0 --lmbda 0.5 --beta 0.0 --quant-type int4  --tags sweep --tags beta --tags lmbda05
+
+# lmbda0
+
+k8s/train.sh lmbda0_lr5e6_beta0 --lmbda 0 --learning-rate 5e-6 --beta 0.0 --quant-type int4 --tags sweep --tags combined
 ```
 
 ## Eval Commands
