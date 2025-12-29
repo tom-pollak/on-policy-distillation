@@ -34,31 +34,17 @@ uv run accelerate launch train.py --lmbda 1 --output_dir qwen_onpolicy_4b_int4 -
 - `λ=0`: Off-policy (dataset sequences only)
 - `λ=1`: Fully on-policy (student-generated sequences only)
 
-### Baseline
-
-| Model          | HellaSwag | ARC-Easy | ARC-Challenge | WinoGrande | MMLU      |
-| -------------- | --------- | -------- | ------------- | ---------- | --------- |
-| Teacher (FP32) | 0.526     | 0.831    | 0.557         | 0.684      | **0.707** |
-
 ### On-Policy (λ=1) vs Off-Policy (λ=0)
 
-Best runs from each approach (default hyperparameters, 10k steps):
+![Benchmark Accuracy by Quantization Method](figures/main_comparison.png)
 
-| Model            | HellaSwag | ARC-Easy | ARC-Challenge | WinoGrande | MMLU  |
-| ---------------- | --------- | -------- | ------------- | ---------- | ----- |
-| Off-policy (λ=0) | 0.515     | 0.819    | 0.538         | 0.678      | 0.681 |
-| On-policy (λ=1)  | 0.512     | 0.819    | 0.533         | 0.676      | 0.686 |
-| Mixed (λ=0.5)    | 0.516     | 0.819    | 0.533         | 0.680      | 0.686 |
+Distillation recovers most of the accuracy lost by naive PTQ INT4, but on-policy (λ=1) and off-policy (λ=0) perform equivalently. The ~0.5% differences between them are within noise.
 
 ### Learning Rate Sweep (λ=0, off-policy)
 
-| Learning Rate | HellaSwag | ARC-Easy | ARC-Challenge | WinoGrande | MMLU      |
-| ------------- | --------- | -------- | ------------- | ---------- | --------- |
-| 5e-6          | 0.515     | 0.817    | 0.538         | **0.688**  | **0.682** |
-| 1e-5          | 0.515     | 0.818    | 0.536         | 0.678      | 0.681     |
-| 2e-5          | **0.518** | 0.816    | **0.549**     | 0.672      | 0.680     |
-| 5e-5          | 0.514     | 0.815    | 0.534         | 0.673      | 0.677     |
-| 1e-4          | 0.513     | 0.811    | 0.521         | 0.670      | 0.674     |
+![LR Sweep](figures/lr_sweep.png)
+
+Higher learning rates achieve lower training loss but worse eval accuracy. Lower LRs (5e-6, 1e-5) generalize better despite not fitting the training data as tightly.
 
 ### Beta sweep (λ=0)
 
@@ -67,7 +53,6 @@ Best runs from each approach (default hyperparameters, 10k steps):
 - `beta` between 0-1 interpolates between the two.
 
 For standard distillation, forward KL is often used, however [on policy distillation](https://thinkingmachines.ai/blog/on-policy-distillation/#loss-function-reverse-kl) recommends reverse KL. I find similar results for λ=0 (off-policy distillation) forward KL performs better.
-
 
 | Beta        | HellaSwag | ARC-Easy  | ARC-Challenge | WinoGrande | MMLU  |
 | ----------- | --------- | --------- | ------------- | ---------- | ----- |
