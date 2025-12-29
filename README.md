@@ -62,18 +62,29 @@ For standard distillation, forward KL is often used, however [on policy distilla
 
 ### On-Policy Hyperparameter Sweeps (λ=1)
 
+#### Beta
+
+Interestingly
+
+| Beta | HellaSwag | ARC-Easy | ARC-Challenge | WinoGrande | MMLU  |
+| ---- | --------- | -------- | ------------- | ---------- | ----- |
+| 0.5  | **0.515** | 0.819    | **0.538**     | 0.675      | 0.686 |
+| 1.0  | 0.512     | 0.819    | 0.533         | **0.676**  | 0.686 |
+
+#### Increasing compute
+
 From limited sweeps, it seems that batch size and rollout length are not sensitive params.
 
 > Note I do the same number of steps, so doubling batch size / rollout lenght doubles the compute budget! Suggesting we've saturated the quantization accuracy of the model.
 
-**Batch size:**
+##### Batch size
 
 | Batch Size | HellaSwag | ARC-Easy  | ARC-Challenge | WinoGrande | MMLU      |
 | ---------- | --------- | --------- | ------------- | ---------- | --------- |
 | 16         | 0.513     | 0.817     | **0.543**     | 0.673      | **0.685** |
 | 32         | 0.512     | **0.822** | 0.540         | 0.671      | 0.684     |
 
-**Rollout length (max new tokens):**
+##### Rollout length
 
 | Tokens | HellaSwag | ARC-Easy  | ARC-Challenge | WinoGrande | MMLU      |
 | ------ | --------- | --------- | ------------- | ---------- | --------- |
