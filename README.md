@@ -60,12 +60,7 @@ Higher learning rates achieve lower training loss but worse eval accuracy. Lower
 
 ### Learning Rate Sweep (λ=1, on-policy)
 
-| LR   | HellaSwag | ARC-Easy | ARC-Challenge | WinoGrande | MMLU  |
-|------|-----------|----------|---------------|------------|-------|
-| 5e-6 | 0.513     | **0.821**| 0.531         | **0.690**  | 0.684 |
-| 1e-5 | 0.511     | 0.816    | **0.537**     | 0.682      | **0.686** |
-| 5e-5 | 0.512     | 0.812    | 0.526         | 0.665      | 0.678 |
-| 1e-4 | 0.511     | 0.816    | 0.537         | 0.670      | 0.677 |
+![LR Sweep λ=1](figures/lr_sweep_lmbda1.png)
 
 Same pattern as off-policy: lower LRs (5e-6, 1e-5) generalize better despite higher training loss.
 
