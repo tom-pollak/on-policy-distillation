@@ -6,10 +6,11 @@ Standard KD trains on fixed datasets, causing distribution mismatch—the studen
 
 ## TL;DR: Null result
 
-> On-policy distillation doesn't provide significant benefits over off-policy distillation. Performance differences are noise (~0.5%)
+> On-policy distillation doesn't provide significant benefits over off-policy, even after hyperparameter tuning. Best-tuned λ=0 and λ=1 perform within 0.3% of each other.
 
-- Distribution mismatch is probably not a big issue when student teacher share same weights in a different precision.
-- On-policy rollouts are much more compute intensive than simple off-policy SFT, which is another disadvantage
+- Distribution mismatch is probably not a big issue when student and teacher share the same weights at different precision
+- On-policy rollouts are much more compute intensive than simple off-policy SFT
+- One interesting finding: optimal β differs by regime (forward KL for off-policy, reverse KL for on-policy)
 
 ## Setup
 
@@ -40,11 +41,33 @@ uv run accelerate launch train.py --lmbda 1 --output_dir qwen_onpolicy_4b_int4 -
 
 Distillation recovers most of the accuracy lost by naive PTQ INT4, but on-policy (λ=1) and off-policy (λ=0) perform equivalently. The ~0.5% differences between them are within noise.
 
+### Best Tuned Configurations
+
+| Config | λ | Settings | HellaSwag | ARC-E | ARC-C | WinoGr | MMLU | Avg |
+|--------|---|----------|-----------|-------|-------|--------|------|-----|
+| Teacher (FP16) | - | - | 0.526 | 0.831 | 0.557 | 0.684 | 0.707 | 0.661 |
+| Off-policy | 0 | lr=5e-6, β=0 | 0.517 | 0.824 | 0.538 | 0.688 | 0.682 | 0.650 |
+| Mixed | 0.5 | β=0 | 0.517 | 0.821 | 0.538 | 0.675 | 0.682 | 0.647 |
+| On-policy | 1 | lr=5e-6, β=1 | 0.513 | 0.821 | 0.531 | 0.690 | 0.684 | 0.648 |
+
+All within ~0.3% of each other—confirms null result. Note: optimal β differs by regime (forward KL for off-policy, reverse KL for on-policy).
+
 ### Learning Rate Sweep (λ=0, off-policy)
 
 ![LR Sweep](figures/lr_sweep.png)
 
 Higher learning rates achieve lower training loss but worse eval accuracy. Lower LRs (5e-6, 1e-5) generalize better despite not fitting the training data as tightly.
+
+### Learning Rate Sweep (λ=1, on-policy)
+
+| LR   | HellaSwag | ARC-Easy | ARC-Challenge | WinoGrande | MMLU  |
+|------|-----------|----------|---------------|------------|-------|
+| 5e-6 | 0.513     | **0.821**| 0.531         | **0.690**  | 0.684 |
+| 1e-5 | 0.511     | 0.816    | **0.537**     | 0.682      | **0.686** |
+| 5e-5 | 0.512     | 0.812    | 0.526         | 0.665      | 0.678 |
+| 1e-4 | 0.511     | 0.816    | 0.537         | 0.670      | 0.677 |
+
+Same pattern as off-policy: lower LRs (5e-6, 1e-5) generalize better despite higher training loss.
 
 ### Extended Training (λ=0, 1k vs 20k steps)
 
@@ -75,9 +98,16 @@ For standard distillation, forward KL is often used, however [on policy distilla
 
 | Beta | HellaSwag | ARC-Easy | ARC-Challenge | WinoGrande | MMLU  |
 | ---- | --------- | -------- | ------------- | ---------- | ----- |
-| 0.0  | \*\*      | \*\*     | \*\*          | \*\*       | \*\*  |
 | 0.5  | **0.515** | 0.819    | **0.538**     | 0.675      | 0.686 |
-| 1.0  | 0.512     | 0.819    | 0.533         | **0.676**  | 0.686 |
+| 1.0  | 0.512     | 0.819    | 0.533         | **0.676**  | **0.686** |
+
+Results are close, but β=1 (reverse KL) is theoretically motivated for on-policy—the student should mode-seek rather than mean-seek when learning from its own generations. This aligns with [on-policy distillation](https://thinkingmachines.ai/blog/on-policy-distillation/#loss-function-reverse-kl) recommendations.
+
+Interestingly, optimal β differs by training regime:
+- **Off-policy (λ=0)**: Forward KL (β=0) works best
+- **On-policy (λ=1)**: Reverse KL (β=1) works best
+
+This makes theoretical sense: off-policy trains on fixed data (mean-seeking appropriate), while on-policy trains on student generations (mode-seeking appropriate).
 
 #### Increasing compute
 
@@ -99,3 +129,14 @@ From limited sweeps, it seems that batch size and rollout length are not sensiti
 | 128    | 0.512     | **0.819** | 0.533         | 0.676      | **0.686** |
 | 256    | 0.513     | 0.818     | 0.530         | **0.681**  | 0.682     |
 | 512    | **0.514** | 0.815     | **0.536**     | 0.676      | 0.685     |
+
+### Mixed On/Off-Policy (λ=0.5)
+
+Interpolating between on-policy and off-policy data sources.
+
+| Config | HellaSwag | ARC-Easy | ARC-Challenge | WinoGrande | MMLU  |
+|--------|-----------|----------|---------------|------------|-------|
+| λ=0.5, β=1 (default) | 0.516 | 0.819 | 0.533 | 0.680 | 0.686 |
+| λ=0.5, β=0 | 0.517 | 0.821 | 0.538 | 0.675 | 0.682 |
+
+Mixed strategy performs similarly to both extremes—no benefit from interpolation.
