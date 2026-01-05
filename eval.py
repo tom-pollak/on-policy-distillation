@@ -3,9 +3,8 @@ import os
 from pathlib import Path
 
 # Set cache directories before importing HF/lm_eval libraries
-os.environ["HF_HOME"] = "./hf-cache"
-os.environ["LM_HARNESS_CACHE_PATH"] = "./lm-eval-cache"
-os.environ["HF_DATASETS_OFFLINE"] = "1"
+os.environ.setdefault("HF_HOME", "./hf-cache")
+os.environ.setdefault("HF_DATASETS_OFFLINE", "1")
 
 import torch
 import wandb

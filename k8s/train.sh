@@ -1,20 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 source ~/.bashrc
+source "$(dirname "$0")/lib.sh"
 
-job_name="$1"
-job_name_safe="${job_name//_/--}"
-shift
-
-cmd="
-set -euo pipefail
-curl -LsSf https://astral.sh/uv/install.sh | sh
-source /root/.local/bin/env
-cd /data/tomp/on-policy-distillation/
-source .env
-uv sync
-uv run accelerate launch train.py --output_dir dump/$job_name $@
-"
-
-cmd_b64=$(printf '%s' "$cmd" | base64)
-JOB_NAME=$job_name_safe krun --gpu 8 --priority low --run-command "echo $cmd_b64 | base64 -d | bash"
+job_name="$1"; shift
+submit_job "$job_name" "uv run accelerate launch train.py --output_dir dump/$job_name $*"

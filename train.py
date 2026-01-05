@@ -1,8 +1,8 @@
 import os
 
-os.environ["TRL_EXPERIMENTAL_SILENCE"] = "1"
-os.environ["HF_HOME"] = "./hf-cache"
-os.environ["HF_DATASETS_OFFLINE"] = "1"
+os.environ.setdefault("TRL_EXPERIMENTAL_SILENCE", "1")
+os.environ.setdefault("HF_HOME", "./hf-cache")
+os.environ.setdefault("HF_DATASETS_OFFLINE", "1")
 
 import torch
 import wandb
