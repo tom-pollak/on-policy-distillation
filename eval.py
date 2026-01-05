@@ -228,7 +228,8 @@ def main(cfg: EvalConfig) -> None:
         torch.cuda.empty_cache()
 
     if state.is_main_process:
-        wandb.log({"eval_results": table})
+        wandb.log({"eval_results": table})  # Shows in Charts
+        wandb.summary["eval_results"] = table  # Queryable via runs.summary
         if own_wandb_run:
             wandb.finish()
 
