@@ -6,9 +6,10 @@ os.environ.setdefault("HF_HOME", "./hf-cache")
 os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 
 import torch
+from datasets import load_dataset
 from lm_eval import evaluator
 from lm_eval.models.huggingface import HFLM
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer, GPTQConfig, AwqConfig
 
 MODEL_NAME = "Qwen/Qwen3-4B-Instruct-2507"
 TASKS = ["hellaswag", "arc_easy", "arc_challenge", "winogrande", "mmlu"]
@@ -26,50 +27,46 @@ def run_lm_eval(model, tokenizer, tasks: list[str]) -> dict:
     }
 
 
-def eval_gptq(model_name: str, bits: int = 4) -> dict:
-    """Quantize model with GPTQ and evaluate."""
-    from auto_gptq import AutoGPTQForCausalLM, BaseQuantizeConfig
-    from datasets import load_dataset
+def get_calibration_dataset(tokenizer, num_samples: int = 128, max_length: int = 2048):
+    """Get calibration dataset for quantization."""
+    dataset = load_dataset("allenai/c4", "en", split="validation", streaming=True)
+    examples = []
+    for i, sample in enumerate(dataset):
+        if i >= num_samples:
+            break
+        text = sample["text"]
+        if len(text) > 256:
+            examples.append(text[:max_length])
+    return examples
+
+
+def eval_gptq(model_name: str) -> dict:
+    """Quantize model with GPTQ and evaluate using optimum."""
+    from optimum.gptq import GPTQQuantizer
 
     print(f"\n{'=' * 60}")
-    print(f"Evaluating GPTQ INT{bits}")
+    print("Evaluating GPTQ INT4")
     print(f"{'=' * 60}")
 
     tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    # Prepare calibration data
-    dataset = load_dataset("allenai/c4", "en", split="validation", streaming=True)
-    calibration_data = []
-    for i, sample in enumerate(dataset):
-        if i >= 128:
-            break
-        text = sample["text"]
-        if len(text) > 512:
-            calibration_data.append(text[:2048])
-
-    # Quantize
-    quantize_config = BaseQuantizeConfig(
-        bits=bits,
-        group_size=128,
-        desc_act=False,
+    # Load model
+    model = AutoModelForCausalLM.from_pretrained(
+        model_name, torch_dtype=torch.float16, device_map="auto"
     )
 
-    model = AutoGPTQForCausalLM.from_pretrained(
-        model_name,
-        quantize_config=quantize_config,
-        torch_dtype=torch.bfloat16,
-    )
-
-    # Prepare examples for GPTQ calibration
-    examples = [
+    # Get calibration data
+    calibration_texts = get_calibration_dataset(tokenizer)
+    calibration_data = [
         tokenizer(text, return_tensors="pt", truncation=True, max_length=2048)
-        for text in calibration_data
+        for text in calibration_texts
     ]
 
-    model.quantize(examples)
-    model = model.to("cuda")
+    # Quantize with GPTQ
+    quantizer = GPTQQuantizer(bits=4, group_size=128, desc_act=False, dataset=calibration_data)
+    model = quantizer.quantize_model(model, tokenizer)
 
     results = run_lm_eval(model, tokenizer, TASKS)
     del model
@@ -77,12 +74,12 @@ def eval_gptq(model_name: str, bits: int = 4) -> dict:
     return results
 
 
-def eval_awq(model_name: str, bits: int = 4) -> dict:
+def eval_awq(model_name: str) -> dict:
     """Quantize model with AWQ and evaluate."""
     from awq import AutoAWQForCausalLM
 
     print(f"\n{'=' * 60}")
-    print(f"Evaluating AWQ INT{bits}")
+    print("Evaluating AWQ INT4")
     print(f"{'=' * 60}")
 
     tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
@@ -90,13 +87,13 @@ def eval_awq(model_name: str, bits: int = 4) -> dict:
         tokenizer.pad_token = tokenizer.eos_token
 
     # Load and quantize
-    model = AutoAWQForCausalLM.from_pretrained(model_name, torch_dtype=torch.bfloat16)
+    model = AutoAWQForCausalLM.from_pretrained(model_name, torch_dtype=torch.float16)
     model.quantize(
         tokenizer,
         quant_config={
             "zero_point": True,
             "q_group_size": 128,
-            "w_bit": bits,
+            "w_bit": 4,
             "version": "GEMM",
         },
     )
