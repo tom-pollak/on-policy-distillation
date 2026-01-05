@@ -174,12 +174,12 @@ def main(cfg: EvalConfig) -> None:
 
     # Build column list: tasks + optional perplexity
     ppl_col = f"ppl_{cfg.perplexity_dataset}" if cfg.perplexity_dataset else None
-    columns = cfg.tasks + ([ppl_col] if ppl_col else [])
+    columns = ["model"] + cfg.tasks + ["avg"] + ([ppl_col] if ppl_col else [])
 
     # header
     if state.is_main_process:
         print(f"{'model':25s} | " + " | ".join(f"{t[:8]:>8s}" for t in cfg.tasks))
-        table = wandb.Table(columns=["model"] + cfg.tasks + ["avg"])
+        table = wandb.Table(columns=columns)
     else:
         table = None
 
