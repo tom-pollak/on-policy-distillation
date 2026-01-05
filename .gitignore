@@ -3,3 +3,4 @@ __pycache__/
 .ruff_cache/
 eval.log
 .analysis-venv/
+wandb/

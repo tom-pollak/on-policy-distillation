@@ -96,7 +96,7 @@ def main(cfg: EvalConfig) -> None:
     # header
     if state.is_main_process:
         print(f"{'model':25s} | " + " | ".join(f"{t[:8]:>8s}" for t in cfg.tasks))
-        table = wandb.Table(columns=["model"] + cfg.tasks)
+        table = wandb.Table(columns=["model"] + cfg.tasks + ["avg"])
     else:
         table = None
 
@@ -104,8 +104,18 @@ def main(cfg: EvalConfig) -> None:
         res = run_lm_eval(model, tokenizer, cfg.tasks)
         if state.is_main_process:
             assert table is not None
-            print(f"{name:25s} | " + " | ".join(f"{res[t]:8.4f}" for t in cfg.tasks))
-            table.add_data(name, *[res[t] for t in cfg.tasks])
+            avg = sum(res.values()) / len(res)
+            print(
+                f"{name:25s} | "
+                + " | ".join(f"{res[t]:8.4f}" for t in cfg.tasks)
+                + f" | {avg:8.4f}"
+            )
+            table.add_data(name, *[res[t] for t in cfg.tasks], avg)
+
+            # Log individual metrics to summary for cross-run comparison
+            for task, acc in res.items():
+                wandb.summary[f"eval/{name}/{task}"] = acc
+            wandb.summary[f"eval/{name}/avg"] = avg
 
         del model
 
@@ -133,7 +143,7 @@ def main(cfg: EvalConfig) -> None:
         torch.cuda.empty_cache()
 
     if state.is_main_process:
-        wandb.summary["eval_results"] = table
+        wandb.log({"eval_results": table})
         if own_wandb_run:
             wandb.finish()
 
