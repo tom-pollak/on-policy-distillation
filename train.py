@@ -11,34 +11,10 @@ from datasets import load_dataset
 from peft import LoraConfig, get_peft_model
 from pydantic import validate_call
 from pydantic_config import parse_argv
-from transformers import AutoTokenizer, TrainerCallback
+from transformers import AutoTokenizer
 from config import EvalConfig, TrainConfig, Tee
-from eval import main as run_eval, compute_perplexity
+from eval import main as run_eval
 from trainer import MinTokensGKDConfig as GKDConfig, MinTokensGKDTrainer as GKDTrainer
-
-
-class PerplexityCallback(TrainerCallback):
-    """Callback to compute perplexity during training."""
-
-    def __init__(
-        self, tokenizer, dataset: str | None = "wikitext", eval_steps: int = 100
-    ):
-        self.tokenizer = tokenizer
-        self.dataset = dataset
-        self.eval_steps = eval_steps
-
-    def on_step_end(self, args, state, control, model, **kwargs):
-        if self.dataset is None or self.eval_steps <= 0:
-            return
-        if state.global_step % self.eval_steps != 0:
-            return
-
-        model.eval()
-        ppl = compute_perplexity(model, self.tokenizer, dataset=self.dataset)
-        model.train()
-
-        if ppl is not None and wandb.run is not None:
-            wandb.log({f"eval/perplexity_{self.dataset}": ppl}, step=state.global_step)
 
 
 def filter_dataset(dataset, tokenizer, max_length, min_response_tokens=32):
@@ -148,23 +124,12 @@ def main(cfg: TrainConfig) -> None:
         **cfg.trainer_kwargs(),
     )
 
-    callbacks = []
-    if cfg.perplexity_dataset:
-        callbacks.append(
-            PerplexityCallback(
-                tokenizer,
-                dataset=cfg.perplexity_dataset,
-                eval_steps=cfg.perplexity_eval_steps,
-            )
-        )
-
     trainer = GKDTrainer(
         model=student,
         teacher_model=teacher,
         args=training_args,
         train_dataset=dataset,
         processing_class=tokenizer,
-        callbacks=callbacks,
     )
 
     # Resume from last checkpoint if one exists

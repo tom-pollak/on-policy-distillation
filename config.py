@@ -128,11 +128,12 @@ class TrainConfig(SharedConfig):
 
     # perplexity eval during training
     perplexity_dataset: str | None = "wikitext"  # None to disable
-    perplexity_eval_steps: int = 100  # how often to compute perplexity
+    eval_strategy: str = "steps"
+    eval_steps: int = 100
 
     def trainer_kwargs(self):
         return self.model_dump(
-            exclude=[
+            exclude={
                 "model_name",
                 "quant_type",
                 "wandb_project",
@@ -142,9 +143,7 @@ class TrainConfig(SharedConfig):
                 "use_lora",
                 "tags",
                 "do_eval",
-                "perplexity_dataset",
-                "perplexity_eval_steps",
-            ]
+            }
         )
 
 
