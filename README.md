@@ -21,11 +21,11 @@ uv sync
 ## Training
 
 ```bash
-# Off-policy KD (λ=0, β=0, lr=5e-6)
-uv run accelerate launch train.py @configs/offpolicy.toml --output-dir dump/offpolicy --quant-type int4
+# Single run
+uv run accelerate launch train.py @configs/offpolicy.toml --output-dir dump/offpolicy
 
-# On-policy KD (λ=1, β=1, lr=5e-6)
-uv run accelerate launch train.py @configs/onpolicy.toml --output-dir dump/onpolicy --quant-type int4
+# Sweep (creates wandb sweep + spawns N agents on K8s)
+bash k8s/sweep.sh sweeps/lr_sweep_onpolicy.yaml 4
 ```
 
 ## Results
