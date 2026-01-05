@@ -43,43 +43,44 @@ Distillation recovers most of the accuracy lost by naive PTQ INT4, but on-policy
 
 ### Best Tuned Configurations
 
-| Config | λ | Settings | HellaSwag | ARC-E | ARC-C | WinoGr | MMLU | Avg |
-|--------|---|----------|-----------|-------|-------|--------|------|-----|
-| Teacher (FP16) | - | - | 0.526 | 0.831 | 0.557 | 0.684 | 0.707 | 0.661 |
-| Off-policy | 0 | lr=5e-6, β=0 | 0.517 | 0.824 | 0.538 | 0.688 | 0.682 | 0.650 |
-| Mixed | 0.5 | β=0 | 0.517 | 0.821 | 0.538 | 0.675 | 0.682 | 0.647 |
-| On-policy | 1 | lr=5e-6, β=1 | 0.513 | 0.821 | 0.531 | 0.690 | 0.684 | 0.648 |
+| Config         | λ   | Settings     | HellaSwag | ARC-E | ARC-C | WinoGr | MMLU  | Avg   |
+| -------------- | --- | ------------ | --------- | ----- | ----- | ------ | ----- | ----- |
+| Teacher (FP16) | -   | -            | 0.526     | 0.831 | 0.557 | 0.684  | 0.707 | 0.661 |
+| Off-policy     | 0   | lr=5e-6, β=0 | 0.517     | 0.824 | 0.538 | 0.688  | 0.682 | 0.650 |
+| Mixed          | 0.5 | β=0          | 0.517     | 0.821 | 0.538 | 0.675  | 0.682 | 0.647 |
+| On-policy      | 1   | lr=5e-6, β=1 | 0.513     | 0.821 | 0.531 | 0.690  | 0.684 | 0.648 |
 
 All within ~0.3% of each other—confirms null result. Note: optimal β differs by regime (forward KL for off-policy, reverse KL for on-policy).
 
-### Learning Rate Sweep (λ=0, off-policy)
+## Learning Rate
 
-![LR Sweep](figures/lr_sweep.png)
+### λ=0, off-policy
+
+![LR Sweep λ=0](figures/lr_sweep.png)
 
 Higher learning rates achieve lower training loss but worse eval accuracy. Lower LRs (5e-6, 1e-5) generalize better despite not fitting the training data as tightly.
 
-### Learning Rate Sweep (λ=1, on-policy)
+### λ=1, on-policy
 
 ![LR Sweep λ=1](figures/lr_sweep_lmbda1.png)
 
 Same pattern as off-policy: lower LRs (5e-6, 1e-5) generalize better despite higher training loss.
 
-### Extended Training (λ=0, 1k vs 20k steps)
+### Rationale
 
-| Steps | Train Loss | HellaSwag | ARC-Easy  | ARC-Challenge | WinoGrande | MMLU      |
-| ----- | ---------- | --------- | --------- | ------------- | ---------- | --------- |
-| 1k    | 0.118      | 0.514     | 0.815     | 0.534         | **0.673**  | **0.677** |
-| 20k   | 0.068      | 0.513     | **0.820** | **0.546**     | 0.664      | 0.674     |
+This is kind of strange, since I'm not repeating data so the "overfitting" must be on the training distribution / data mix. We should try different data mixes to verify this behaviour.
 
-20x compute reduces training loss by 42% but eval accuracy is mixed. Suggests we've hit the accuracy ceiling for INT4 quantization.
+I would have suspected λ=1 to be less susceptible to distrbution shift, since the student uses its own rollouts. But the prompts may still be very different from e.g. MMLU question.
 
-### Beta sweep (λ=0)
+## Beta
 
 - `beta=0`: forward KL
 - `beta=1`: reverse KL
 - `beta` between 0-1 interpolates between the two.
 
-For standard distillation, forward KL is often used, however [on policy distillation](https://thinkingmachines.ai/blog/on-policy-distillation/#loss-function-reverse-kl) recommends reverse KL. I find similar results for λ=0 (off-policy distillation) forward KL performs better.
+### λ=0
+
+For standard distillation, forward KL is often used, however [on policy distillation](https://thinkingmachines.ai/blog/on-policy-distillation/#loss-function-reverse-kl) recommends reverse KL. I find similar results for λ=0 (off-policy distillation) forward KL performs better. since off-policy trains on fixed data mean-seeking is appropriate.
 
 | Beta | HellaSwag | ARC-Easy  | ARC-Challenge | WinoGrande | MMLU  |
 | ---- | --------- | --------- | ------------- | ---------- | ----- |
@@ -87,37 +88,45 @@ For standard distillation, forward KL is often used, however [on policy distilla
 | 0.5  | 0.517     | 0.822     | 0.537         | 0.679      | 0.681 |
 | 1.0  | 0.515     | 0.820     | 0.538         | **0.684**  | 0.679 |
 
-### On-Policy Hyperparameter Sweeps (λ=1)
+### λ=1
 
-#### Beta
+| Beta | HellaSwag | ARC-Easy  | ARC-Challenge | WinoGrande | MMLU  |
+| ---- | --------- | --------- | ------------- | ---------- | ----- |
+| 0.0  | 0.515     | **0.823** | 0.536         | **0.680**  | 0.686 |
+| 0.5  | 0.515     | 0.819     | **0.538**     | 0.675      | 0.686 |
+| 1.0  | 0.512     | 0.819     | 0.533         | 0.676      | 0.686 |
 
-| Beta | HellaSwag | ARC-Easy | ARC-Challenge | WinoGrande | MMLU  |
-| ---- | --------- | -------- | ------------- | ---------- | ----- |
-| 0.5  | **0.515** | 0.819    | **0.538**     | 0.675      | 0.686 |
-| 1.0  | 0.512     | 0.819    | 0.533         | **0.676**  | **0.686** |
+I don't find any substantive difference in β where λ=1. If anything, β=0 performs better.
 
-Results are close, but β=1 (reverse KL) is theoretically motivated for on-policy—the student should mode-seek rather than mean-seek when learning from its own generations. This aligns with [on-policy distillation](https://thinkingmachines.ai/blog/on-policy-distillation/#loss-function-reverse-kl) recommendations.
+β=1 is theoretically motivated for on-policy student; should mode-seek rather than mean-seek when learning from its own generations. This aligns with [on-policy distillation](https://thinkingmachines.ai/blog/on-policy-distillation/#loss-function-reverse-kl) recommendations.
 
-Interestingly, optimal β differs by training regime:
-- **Off-policy (λ=0)**: Forward KL (β=0) works best
-- **On-policy (λ=1)**: Reverse KL (β=1) works best
+## Extended Training
 
-This makes theoretical sense: off-policy trains on fixed data (mean-seeking appropriate), while on-policy trains on student generations (mode-seeking appropriate).
+### λ=0
 
-#### Increasing compute
+| Steps | Loss  | HellaSwag | ARC-Easy  | ARC-Challenge | WinoGrande | MMLU      |
+| ----- | ----- | --------- | --------- | ------------- | ---------- | --------- |
+| 1k    | 0.118 | 0.514     | 0.815     | 0.534         | **0.673**  | **0.677** |
+| 20k   | 0.068 | 0.513     | **0.820** | **0.546**     | 0.664      | 0.674     |
+
+20x compute reduces training loss by 42% but eval accuracy is mixed. Suggests we've hit the accuracy ceiling for INT4 quantization.
+
+### λ=1
 
 From limited sweeps, it seems that batch size and rollout length are not sensitive params.
 
 > Note I do the same number of steps, so doubling batch size / rollout lenght doubles the compute budget! Suggesting we've saturated the quantization accuracy of the model.
 
-##### Batch size
+We get a substantial difference in loss TODO.
+
+#### Batch size
 
 | Batch Size | HellaSwag | ARC-Easy  | ARC-Challenge | WinoGrande | MMLU      |
 | ---------- | --------- | --------- | ------------- | ---------- | --------- |
 | 16         | 0.513     | 0.817     | **0.543**     | 0.673      | **0.685** |
 | 32         | 0.512     | **0.822** | 0.540         | 0.671      | 0.684     |
 
-##### Rollout length
+#### Rollout length
 
 | Tokens | HellaSwag | ARC-Easy  | ARC-Challenge | WinoGrande | MMLU      |
 | ------ | --------- | --------- | ------------- | ---------- | --------- |
@@ -129,9 +138,9 @@ From limited sweeps, it seems that batch size and rollout length are not sensiti
 
 Interpolating between on-policy and off-policy data sources.
 
-| Config | HellaSwag | ARC-Easy | ARC-Challenge | WinoGrande | MMLU  |
-|--------|-----------|----------|---------------|------------|-------|
-| λ=0.5, β=1 (default) | 0.516 | 0.819 | 0.533 | 0.680 | 0.686 |
-| λ=0.5, β=0 | 0.517 | 0.821 | 0.538 | 0.675 | 0.682 |
+| Config               | HellaSwag | ARC-Easy | ARC-Challenge | WinoGrande | MMLU  |
+| -------------------- | --------- | -------- | ------------- | ---------- | ----- |
+| λ=0.5, β=1 (default) | 0.516     | 0.819    | 0.533         | 0.680      | 0.686 |
+| λ=0.5, β=0           | 0.517     | 0.821    | 0.538         | 0.675      | 0.682 |
 
 Mixed strategy performs similarly to both extremes—no benefit from interpolation.

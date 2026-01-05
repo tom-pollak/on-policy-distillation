@@ -1,6 +1,3 @@
-# Off-policy knowledge distillation (λ=0)
-# Best tuned: forward KL (β=0) + low learning rate
-
 lmbda = 0.0
 beta = 0.0
 learning_rate = 5e-6
