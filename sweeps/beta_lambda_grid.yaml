@@ -1,0 +1,14 @@
+program: train.py
+method: grid
+parameters:
+  beta:
+    values: [0.0, 0.5, 1.0]
+  lmbda:
+    values: [0.0, 0.5, 1.0]
+command:
+  - ${env}
+  - uv
+  - run
+  - python
+  - ${program}
+  - ${args}

@@ -1,0 +1,13 @@
+program: train.py
+method: grid
+parameters:
+  learning_rate:
+    values: [1.0e-6, 5.0e-6, 1.0e-5, 5.0e-5, 1.0e-4]
+command:
+  - ${env}
+  - uv
+  - run
+  - python
+  - ${program}
+  - "@configs/offpolicy.toml"
+  - ${args}
