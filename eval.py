@@ -190,14 +190,21 @@ def main(cfg: EvalConfig) -> None:
         ppl = compute_perplexity(model, tokenizer, dataset=cfg.perplexity_dataset)
 
         # Build metrics dict with keys matching columns (except "model")
-        metrics = {**task_results, "avg": sum(task_results.values()) / len(task_results)}
+        metrics = {
+            **task_results,
+            "avg": sum(task_results.values()) / len(task_results),
+        }
         if ppl is not None:
             metrics[f"ppl_{cfg.perplexity_dataset}"] = ppl
 
         if state.is_main_process:
             assert table is not None
             row = [name] + [metrics[c] for c in columns[1:]]
-            print(" | ".join(f"{v:8.4f}" if isinstance(v, float) else f"{v:>8s}" for v in row))
+            print(
+                " | ".join(
+                    f"{v:8.4f}" if isinstance(v, float) else f"{v:>8s}" for v in row
+                )
+            )
             table.add_data(*row)
             for key, value in metrics.items():
                 wandb.summary[f"eval/{name}/{key}"] = value
