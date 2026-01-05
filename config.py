@@ -89,11 +89,6 @@ class TrainConfig(SharedConfig):
     # data
     dataset_name: str = "allenai/tulu-3-sft-mixture"
 
-    @field_validator("output_dir", mode="before")
-    @classmethod
-    def ensure_path(cls, v):
-        return Path(v) if isinstance(v, str) else v
-
     # misc
     seed: int = 42
 

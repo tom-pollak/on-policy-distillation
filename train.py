@@ -75,11 +75,6 @@ def main(cfg: TrainConfig) -> None:
             tags=cfg.tags,
             config=cfg.model_dump(),
         )
-        # Allow wandb sweeps to override config params
-        if wandb.config:
-            for k, v in dict(wandb.config).items():
-                if hasattr(cfg, k):
-                    setattr(cfg, k, v)
 
     # Tokenizer
     tokenizer = AutoTokenizer.from_pretrained(cfg.model_name, use_fast=True)
