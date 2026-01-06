@@ -138,8 +138,9 @@ def run_lm_eval(
     tokenizer,
     task_list: list[str],
     num_fewshot: int | None = None,
-) -> dict:
-    """Run lm-evaluation-harness on specified tasks."""
+    perplexity_dataset: str | None = None,
+) -> tuple[dict, float | None]:
+    """Run lm-evaluation-harness on specified tasks and optionally compute perplexity."""
     lm = HFLM(pretrained=model, tokenizer=tokenizer)
     results = evaluator.simple_evaluate(
         model=lm,
@@ -147,12 +148,14 @@ def run_lm_eval(
         num_fewshot=num_fewshot,
         batch_size="auto",
     )
-    return {
+    task_results = {
         task: results["results"][task].get(
             "acc,none", results["results"][task].get("acc_norm,none")
         )
         for task in task_list
     }
+    ppl = compute_perplexity(model, tokenizer, dataset=perplexity_dataset)
+    return task_results, ppl
 
 
 @validate_call
@@ -186,8 +189,9 @@ def main(cfg: EvalConfig) -> None:
         table = None
 
     def eval_and_log(name: str, model):
-        task_results = run_lm_eval(model, tokenizer, cfg.tasks)
-        ppl = compute_perplexity(model, tokenizer, dataset=cfg.perplexity_dataset)
+        task_results, ppl = run_lm_eval(
+            model, tokenizer, cfg.tasks, perplexity_dataset=cfg.perplexity_dataset
+        )
 
         # Build metrics dict with keys matching columns (except "model")
         metrics = {

@@ -74,6 +74,9 @@ def eval_gptq(cfg: QuantEvalConfig, tokenizer) -> dict:
         num_calibration_samples=cfg.num_calibration_samples,
     )
 
+    model.save_pretrained(cfg.output_dir, save_compressed=True)
+    tokenizer.save_pretrained(cfg.output_dir)
+
     results = run_lm_eval(model, tokenizer, cfg.tasks)
     del model
     torch.cuda.empty_cache()

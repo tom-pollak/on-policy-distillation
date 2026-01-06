@@ -119,7 +119,9 @@ class TrainConfig(SharedConfig):
     # GKD params
     lmbda: float = 1.0  # 0.0 = off-policy (dataset), 1.0 = on-policy (student rollouts)
     beta: float = 1.0  # 0.0 = forward KL, 1.0 = reverse KL
-    seq_kd: bool = False  # sequence-level KD (supervised FT on teacher-generated output)
+    seq_kd: bool = (
+        False  # sequence-level KD (supervised FT on teacher-generated output)
+    )
 
     # wandb
     tags: list[str] = ["train"]
@@ -172,7 +174,7 @@ class EvalConfig(SharedConfig):
         return [v] if not isinstance(v, list) else v
 
 
-class QuantEvalConfig(EvalConfig):
+class QuantEvalConfig(SharedConfig):
     """Config for GPTQ/AWQ quantization evaluation."""
 
     # calibration
@@ -180,8 +182,25 @@ class QuantEvalConfig(EvalConfig):
     num_calibration_samples: int = 512
     max_seq_length: int = 2048
 
+    output_dir: Path = Path("./qwen_4b_quant")
+
     # wandb
     tags: list[str] = ["quant-eval"]
+
+    tasks: list[str] = [
+        "hellaswag",
+        "arc_easy",
+        "arc_challenge",
+        "winogrande",
+        "mmlu",
+    ]
+    # perplexity eval
+    perplexity_dataset: str | None = "wikitext"  # None to skip
+
+    @field_validator("tasks", mode="before")
+    @classmethod
+    def ensure_list(cls, v):
+        return [v] if not isinstance(v, list) else v
 
 
 class Tee:
