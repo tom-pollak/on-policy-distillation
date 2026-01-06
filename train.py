@@ -6,12 +6,13 @@ os.environ.setdefault("HF_DATASETS_OFFLINE", "1")
 os.environ.setdefault("PYTORCH_ALLOC_CONF", "expandable_segments:True")
 
 import torch
-import torch.serialization
 import numpy as np
 
 # PyTorch 2.6 changed torch.load to weights_only=True by default.
 # RNG state checkpoints contain numpy arrays, so we need to allowlist numpy.
-torch.serialization.add_safe_globals([np._core.multiarray._reconstruct, np.ndarray])
+from numpy._core.multiarray import _reconstruct
+
+torch.serialization.add_safe_globals([_reconstruct, np.ndarray, np.dtype])
 
 import wandb
 from accelerate import PartialState

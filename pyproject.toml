@@ -10,7 +10,7 @@ dependencies = [
     "jupyterlab>=4.5.1",
     "lm-eval>=0.4.0",
     "matplotlib",
-    "numpy",
+    "numpy>=2",
     "peft>=0.18.0",
     "pydantic>=2.12.5",
     "pydantic-config[toml]",
