@@ -1,10 +1,6 @@
 # QAT vs PTQ Quantization Numerics
 
-This document explains the differences between QAT (Quantization-Aware Training) and PTQ (Post-Training Quantization) in torchao, and why LoRA adapters trained with QAT cannot be directly applied to PTQ-quantized weights.
-
-## Summary
-
-**The LoRA adapters trained with QAT fake quantization are NOT compatible with PTQ-quantized weights.** They use fundamentally different quantization numerics.
+This document explains the differences between QAT (Quantization-Aware Training) and PTQ (Post-Training Quantization) in torchao.
 
 ## QAT: Fake Quantization (Training)
 
@@ -87,7 +83,7 @@ Key characteristics:
 - **Different scale/zp computation**: Not the same as FBGEMM
 - **Configurable group size**: Default 128, but can vary
 
-## Why They're Incompatible
+## Incompatiblities
 
 | Aspect        | QAT (FBGEMM)             | PTQ (torchao native)  |
 | ------------- | ------------------------ | --------------------- |
@@ -96,201 +92,20 @@ Key characteristics:
 | Zero point    | `min + scale * 8`        | Different computation |
 | Storage       | FP16 with noise          | Actual packed int4    |
 
-The quantization error introduced by QAT is **different** from PTQ:
+## LoRA Merge Semantics
 
-- QAT error: ~0.0005 mean absolute error
-- PTQ error: ~0.001 mean absolute error
-- QAT vs PTQ difference: ~0.001 mean absolute error
-
-While these numbers seem small, the LoRA adapters learned to correct the **specific** QAT noise pattern. When applied to PTQ-quantized weights (with different noise), the corrections don't align.
-
-## Experimental Evidence
-
-When we tried to match training by:
-
-1. Load model
-2. PTQ quantize (introduces PTQ quantization error)
-3. Dequantize back to FP16 (preserving PTQ error)
-4. Apply LoRA (trained with QAT error)
-5. Re-quantize
-
-**Results were broken**: Random accuracy (~0.5 on WinoGrande), perplexity ~71 million.
-
-## Correct Evaluation Approaches
-
-### Option 1: Standard PTQ (Simple, but loses LoRA benefit)
-
-Apply LoRA to FP16 weights, merge, then PTQ quantize:
-
-```python
-model = load_model()  # FP16
-model = PeftModel.from_pretrained(model, lora_path)
-model = model.merge_and_unload()
-quantize_(model, Int4WeightOnlyConfig())  # PTQ at the end
-```
-
-**Problem**: The LoRA was trained to correct the *specific* QAT noise pattern. Applying it to clean FP16 weights, then adding *different* PTQ noise, means the LoRA corrections don't align with the quantization error. This may still improve results, but doesn't match training.
-
-### Option 2: QAT Fake Quantization (Matches Training)
-
-Use QAT fake quantization for evaluation to match training exactly:
-
-```python
-model = load_model()
-quantize_(model, QATConfig(Int4WeightOnlyConfig(), step="prepare"))
-# Model now has FakeQuantizedLinear with QAT noise
-model = PeftModel.from_pretrained(model, lora_path)
-model = model.merge_and_unload()
-# Keep as fake-quantized (BF16 storage with QAT noise in forward pass)
-```
-
-**Pros**: Matches training numerics exactly - LoRA corrections align with quantization error.
-**Cons**: Weights are still BF16 (not actual int4), so no memory savings at inference.
-
-### Option 3: QAT Prepare → Convert (Recommended)
-
-Use QAT's two-step process: prepare (fake quant) → convert (real int4):
-
-```python
-model = load_model()
-# Step 1: Prepare - adds fake quantization (same as training)
-quantize_(model, QATConfig(Int4WeightOnlyConfig(), step="prepare"))
-model = PeftModel.from_pretrained(model, lora_path)
-model = model.merge_and_unload()
-# Step 2: Convert - converts FakeQuantizedLinear to real int4
-quantize_(model, QATConfig(Int4WeightOnlyConfig(), step="convert"))
-```
-
-**Pros**:
-- Matches training numerics during LoRA application
-- Final model uses real int4 storage (memory savings)
-- QAT convert uses FBGEMM-compatible int4 format
-
-This is the correct approach because:
-1. The LoRA sees the same QAT noise it was trained with
-2. The final conversion preserves the numerics (FBGEMM-style quantization throughout)
-
-## Files
-
-- `dequantize.py`: Manual dequantization for **PTQ** Int4Tensor (uses PTQ numerics, NOT QAT)
-  - Useful for debugging/analysis of PTQ quantization
-  - **Do not use for eval** - PTQ numerics don't match training
-- `compare_qat_ptq.py`: Script comparing QAT vs PTQ numerics
-- `eval.py`: Evaluation script - should use Option 3 (QAT prepare → convert)
-
-## QAT + LoRA Merge Semantics
-
-### The Problem
-
-When training with QAT + LoRA, the forward pass is:
+When training with QAT + LoRA:
 
 ```
-output = fake_quant(W_base) @ x + W_B @ W_A @ x
+y = Q(W) @ x + ΔW @ x     where Q = fake_quant, ΔW = B @ A
 ```
 
-The LoRA correction is added **after** fake quantization. The LoRA learns to correct the quantization error of `fake_quant(W_base)`.
-
-### What merge_and_unload Does
-
-When we call `merge_and_unload()`, the LoRA weights are merged into the base:
+When we call `merge_and_unload()`:
 
 ```
-W_merged = W_base + W_B @ W_A
-output = fake_quant(W_merged) @ x
+y = Q(W + ΔW) @ x
 ```
 
-The fake quantization is applied to the **merged** weights - this is different!
+These are not equivalent: `Q(W) + ΔW ≠ Q(W + ΔW)`. The LoRA learned to correct `Q(W)`, not to be merged before quantization.
 
-### Mathematical Comparison
-
-```
-Training:    y = Q(W) @ x + ΔW @ x     where Q = fake_quant, ΔW = B @ A
-Merged:      y = Q(W + ΔW) @ x
-```
-
-These are NOT equivalent because:
-- `Q(W) + ΔW ≠ Q(W + ΔW)` in general
-- The LoRA learned to correct `Q(W)`, not to be part of the weight before quantization
-
-### When Does This Matter?
-
-The difference depends on:
-1. **Magnitude of LoRA correction**: Small LoRA → small difference
-2. **Quantization granularity**: Group-wise quant → depends on group boundaries
-3. **Weight distribution**: If `W + ΔW` quantizes similarly to `W`, difference is small
-
-### Verification
-
-Run `verify_qat_lora.py` to measure the difference on a simple model:
-
-```bash
-uv run python verify_qat_lora.py
-```
-
-**Measured results** (512x512 layer with random LoRA weights):
-```
-No merge (training-like) vs Merged:  max=0.742188, mean=0.110840
-No merge (training-like) vs FP16:    max=0.148438, mean=0.030273
-```
-
-The merge introduces ~11% mean absolute error in outputs - significant!
-
-### Workaround: Skip Final Quantization
-
-If `requantize_after_lora=False`, the final `Q()` is skipped entirely:
-```
-y = (W + ΔW) @ x    # No quantization, avoids the mismatch
-```
-
-This keeps the LoRA correction in full precision, avoiding the semantic difference.
-
-### Alternatives if Merge Causes Issues
-
-1. **Don't merge**: Keep LoRA separate during eval
-   ```python
-   model = PeftModel.from_pretrained(model, checkpoint)
-   # Don't call merge_and_unload()
-   # Run inference with PeftModel directly
-   ```
-
-2. **Merge after convert**: Convert to int4 first, then somehow apply LoRA (complex)
-
-3. **Accept the difference**: If verification shows small error, merging may be acceptable
-
-## Implementation Notes
-
-### Why we don't need manual dequantization for eval
-
-The broken approach was:
-```
-PTQ quantize → manual dequantize → apply LoRA
-```
-This fails because PTQ uses different numerics than QAT training.
-
-The correct approach with QAT:
-```
-QAT prepare → apply LoRA → (optionally) QAT convert
-```
-
-With QAT `step="prepare"`:
-- Linear layers become `FakeQuantizedLinear`
-- Weights stay in BF16 (not actually quantized)
-- Forward pass applies fake quant noise matching training
-- LoRA can be applied directly to BF16 weights
-- No manual dequantization needed!
-
-The QAT convert step (`step="convert"`) handles the transition to real int4 using matched FBGEMM numerics.
-
-### What about dequantize.py?
-
-`dequantize.py` was created for the PTQ flow and uses PTQ numerics. It's still useful for:
-- Debugging/analyzing PTQ quantization error
-- Understanding the Int4Tensor format
-
-But it's **not needed** for the eval pipeline when using QAT (Option 2/3).
-
-## References
-
-- torchao QAT: `torchao/quantization/qat/_linear.py`
-- torchao Int4: `torchao/dtypes/nf4tensor.py` and related
-- FBGEMM int4 kernels: Used by QAT for deployment compatibility
+With `requantize_after_lora=False`, `Q()` is skipped entirely: `y = (W + ΔW) @ x`. Test with and without lora quantization error.
