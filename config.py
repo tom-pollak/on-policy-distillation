@@ -119,6 +119,7 @@ class TrainConfig(SharedConfig):
     # GKD params
     lmbda: float = 1.0  # 0.0 = off-policy (dataset), 1.0 = on-policy (student rollouts)
     beta: float = 1.0  # 0.0 = forward KL, 1.0 = reverse KL
+    seq_kd: bool = False  # sequence-level KD (supervised FT on teacher-generated output)
 
     # wandb
     tags: list[str] = ["train"]
