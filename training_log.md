@@ -154,10 +154,14 @@ lmbda0_lr5e-6_beta0 |   0.6867 |  10.0060
 lmbda0_lr1e-6_beta0 |   0.6843 |  10.2133
 
 
+No requant - no lora qant
+
 k8s/eval.sh eval-lmbda0-lr-no-requant --quant-type int4 --tags eval --no-eval-teacher --lora-paths dump/lmbda0_lr1e-4_beta0 --lora-paths dump/lmbda0_lr5e-5_beta0 --lora-paths dump/lmbda0_lr1e-5_beta0 --lora-paths dump/lmbda0_lr5e-6_beta0 --lora-paths dump/lmbda0_lr1e-6_beta0 --tags lr --tags lmbda0 --tags sweep --tasks winogrande --no-requantize-after-lora
 
 model               | winogran | ppl_wiki
 lmbda0_lr1e-4_beta0 |   0.6693 |  10.4580
+lmbda0_lr5e-5_beta0 |   0.6669 |  10.4484
+lmbda0_lr1e-5_beta0 |   0.6796 |  10.1923
 
-k8s/eval.sh eval-20k --tags eval --lora-paths dump/lmbda0_lr5e5_steps20k
+k8s/eval.sh eval-20k --tags eval --tags 20k --lora-paths dump/lmbda0_lr5e5_steps20k
 ```
