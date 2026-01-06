@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Literal
 
 import torch
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_config import BaseConfig
 from torchao.prototype.mx_formats.inference_workflow import NVFP4WeightOnlyConfig
 from torchao.quantization import Int4WeightOnlyConfig, quantize_
@@ -93,7 +93,9 @@ class TrainConfig(SharedConfig):
     seed: int = 42
 
     use_lora: bool = True
-    resume: bool = True  # resume from checkpoint if one exists; use --no-resume for sweeps
+    resume: bool = (
+        True  # resume from checkpoint if one exists; use --no-resume for sweeps
+    )
 
     # trainer
     max_steps: int = 1000
@@ -115,7 +117,7 @@ class TrainConfig(SharedConfig):
     min_new_tokens: int = 16
     include_tokens_per_second: bool = True
 
-    output_dir: Path = Path("./qwen_4b_tulu3_sft_lmbda_1")
+    output_dir: Path | None = None  # auto-generated from hyperparams if not set
 
     # GKD params
     lmbda: float = 1.0  # 0.0 = off-policy (dataset), 1.0 = on-policy (student rollouts)
@@ -134,6 +136,31 @@ class TrainConfig(SharedConfig):
     perplexity_dataset: str | None = "wikitext"  # None to disable
     eval_strategy: str = "steps"
     eval_steps: int = 250
+
+    @model_validator(mode="after")
+    def set_output_dir(self):
+        if self.output_dir is not None:
+            return self
+
+        # Format: lmbda{λ}_lr{lr}_beta{β}
+        # Only include non-default values to keep names short
+        parts = [f"lmbda{self.lmbda:g}"]
+
+        # Learning rate: format as 1e-5 style
+        lr = self.learning_rate
+        exp = int(f"{lr:e}".split("e")[1])
+        mantissa = lr / (10**exp)
+        if mantissa == 1.0:
+            parts.append(f"lr1e{exp}")
+        else:
+            parts.append(f"lr{mantissa:g}e{exp}")
+
+        # Beta if not default (1.0)
+        if self.beta != 1.0:
+            parts.append(f"beta{self.beta:g}")
+
+        self.output_dir = Path("dump") / "_".join(parts)
+        return self
 
     def trainer_kwargs(self):
         return self.model_dump(
