@@ -133,7 +133,7 @@ class TrainConfig(SharedConfig):
     # perplexity eval during training
     perplexity_dataset: str | None = "wikitext"  # None to disable
     eval_strategy: str = "steps"
-    eval_steps: int = 100
+    eval_steps: int = 250
 
     def trainer_kwargs(self):
         return self.model_dump(
