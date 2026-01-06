@@ -246,4 +246,4 @@ def main(cfg: EvalConfig) -> None:
 
 
 if __name__ == "__main__":
-    main(EvalConfig(**parse_argv()))
+    main(parse_argv())

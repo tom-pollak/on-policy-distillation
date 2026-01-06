@@ -160,4 +160,4 @@ def main(cfg: TrainConfig) -> None:
 
 
 if __name__ == "__main__":
-    main(TrainConfig(**parse_argv()))
+    main(parse_argv())

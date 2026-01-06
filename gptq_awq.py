@@ -180,4 +180,4 @@ def main(cfg: QuantEvalConfig):
 
 
 if __name__ == "__main__":
-    main(QuantEvalConfig(**parse_argv()))
+    main(parse_argv())
