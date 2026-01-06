@@ -93,9 +93,7 @@ class TrainConfig(SharedConfig):
     seed: int = 42
 
     use_lora: bool = True
-    resume: bool = (
-        True  # resume from checkpoint if one exists; use --no-resume for sweeps
-    )
+    resume: bool = True
 
     # trainer
     max_steps: int = 1000
