@@ -104,7 +104,7 @@ class TrainConfig(SharedConfig):
     gradient_accumulation_steps: int = 2
     learning_rate: float = 1.0e-5
     weight_decay: float = 0.0
-    warmup_ratio: float = 0.1
+    warmup_ratio: float = 0.2
 
     # logging
     logging_steps: int = 1
