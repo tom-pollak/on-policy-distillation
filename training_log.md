@@ -146,7 +146,12 @@ lmbda1_lr5e6              |   0.5129 |   0.8211 |   0.5307 |   0.6898 |   0.6836
 ```
 k8s/eval.sh eval-lmbda0-lr --quant-type int4 --tags eval --no-eval-teacher --lora-paths dump/lmbda0_lr1e-4_beta0 --lora-paths dump/lmbda0_lr5e-5_beta0 --lora-paths dump/lmbda0_lr1e-5_beta0 --lora-paths dump/lmbda0_lr5e-6_beta0 --lora-paths dump/lmbda0_lr1e-6_beta0 --tags lr --tags lmbda0 --tags sweep --tasks winogrande
 
+model | winogran |      avg | ppl_wiki
+lmbda0_lr1e-4_beta0/1000 |   0.4988 |   0.4988 | 71445536.0000
+lmbda0_lr5e-5_beta0/1000 |   0.4980 |   0.4980 | 71659392.0000
+
 
 k8s/eval.sh eval-lmbda0-lr-no-requant --quant-type int4 --tags eval --no-eval-teacher --lora-paths dump/lmbda0_lr1e-4_beta0 --lora-paths dump/lmbda0_lr5e-5_beta0 --lora-paths dump/lmbda0_lr1e-5_beta0 --lora-paths dump/lmbda0_lr5e-6_beta0 --lora-paths dump/lmbda0_lr1e-6_beta0 --tags lr --tags lmbda0 --tags sweep --tasks winogrande --no-requantize-after-lora
+
 
 ```

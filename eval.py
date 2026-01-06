@@ -17,11 +17,11 @@ from peft import PeftModel
 from pydantic import validate_call
 from pydantic_config import parse_argv
 from torchao.quantization import quantize_
+from torchao.quantization.qat import QATConfig
 from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from config import EvalConfig, Tee
-from dequantize import dequantize_model_
 
 
 PERPLEXITY_DATASETS = {
@@ -245,26 +245,22 @@ def main(cfg: EvalConfig) -> None:
         _eval("teacher_ptq", cfg.load_quant_model("ptq"))
         torch.cuda.empty_cache()
 
-    # Evaluate each LoRA adapter
-    # To match training: quantize first, then dequantize, then apply LoRA
-    # This ensures LoRA is applied to weights that have seen quantization error
+    # Evaluate each LoRA adapter using QAT prepare → convert (Option 3)
+    # This matches training numerics: QAT fake quant → apply LoRA → convert to int4
     for lora_path in cfg.lora_paths:
         checkpoint, step = get_latest_checkpoint(lora_path)
 
-        # 1. Load and quantize (introduces quantization error)
+        # 1. Load and apply QAT fake quantization (matches training numerics)
         model = cfg.load_model()
-        quantize_(model, cfg._get_torchao_config())
+        quantize_(model, cfg.get_qat_config())
 
-        # 2. Dequantize weights (upcast) - preserves quantization error in FP16
-        dequantize_model_(model)
-
-        # 3. Apply and merge LoRA
+        # 2. Apply and merge LoRA (on fake-quantized weights, same as training)
         model = PeftModel.from_pretrained(model, str(checkpoint))
         model = model.merge_and_unload()
 
-        # 4. Optionally re-quantize for inference
+        # 3. Optionally convert to real int4 for inference
         if cfg.requantize_after_lora:
-            quantize_(model, cfg._get_torchao_config())
+            quantize_(model, QATConfig(cfg._get_torchao_config(), step="convert"))
 
         _eval(f"{lora_path.stem}/{step}", model)
         del model

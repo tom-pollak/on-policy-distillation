@@ -1,11 +1,19 @@
-"""Dequantization utilities for torchao Int4Tensor."""
+"""PTQ dequantization utilities for torchao Int4Tensor.
+
+WARNING: These functions use PTQ numerics which are DIFFERENT from QAT training.
+Do not use for eval - use QAT prepare/convert instead.
+See docs/qat_vs_ptq_numerics.md for details.
+"""
 
 import torch
 from torch import nn
 
 
 def dequantize_int4(weight: torch.Tensor) -> torch.Tensor:
-    """Dequantize an Int4Tensor back to float.
+    """Dequantize a PTQ Int4Tensor back to float.
+
+    WARNING: This uses PTQ numerics which are DIFFERENT from QAT training.
+    Do not use for eval - use QAT prepare/convert instead.
 
     Args:
         weight: A torchao Int4Tensor with qdata, scale, and zero_point attributes.
@@ -48,7 +56,10 @@ def dequantize_int4(weight: torch.Tensor) -> torch.Tensor:
 
 
 def dequantize_model_(model: nn.Module) -> None:
-    """Dequantize all Int4 quantized Linear layers in a model (in-place).
+    """Dequantize all PTQ Int4 quantized Linear layers in a model (in-place).
+
+    WARNING: This uses PTQ numerics which are DIFFERENT from QAT training.
+    Do not use for eval - use QAT prepare/convert instead.
 
     Args:
         model: Model with quantized weights to dequantize.
@@ -72,14 +83,16 @@ if __name__ == "__main__":
     device = "cuda" if torch.cuda.is_available() else "cpu"
     dtype = torch.bfloat16
 
-    print(f"Testing dequantization on {out_features}x{in_features} layer ({device})")
+    print(
+        f"Testing PTQ dequantization on {out_features}x{in_features} layer ({device})"
+    )
 
     # Create layer and store original weights
     layer = nn.Linear(in_features, out_features, bias=False, dtype=dtype, device=device)
     layer.weight.data = torch.randn_like(layer.weight.data)
     original = layer.weight.data.clone()
 
-    # Quantize
+    # Quantize with PTQ
     quantize_(layer, Int4WeightOnlyConfig())
     print(f"Quantized weight type: {type(layer.weight.data)}")
 
@@ -90,7 +103,7 @@ if __name__ == "__main__":
     diff = (original - dequant).float()
     abs_diff = diff.abs()
 
-    print(f"\nQuantization Error Statistics:")
+    print("\nPTQ Quantization Error Statistics:")
     print(f"  Max absolute error:  {abs_diff.max().item():.6f}")
     print(f"  Mean absolute error: {abs_diff.mean().item():.6f}")
     print(f"  Std absolute error:  {abs_diff.std().item():.6f}")
@@ -107,7 +120,7 @@ if __name__ == "__main__":
     ax.hist(diff_flat, bins=100, edgecolor="black", alpha=0.7)
     ax.set_xlabel("Quantization Error")
     ax.set_ylabel("Count")
-    ax.set_title("Distribution of Quantization Errors")
+    ax.set_title("Distribution of PTQ Quantization Errors")
     ax.axvline(x=0, color="r", linestyle="--", alpha=0.5)
 
     # Heatmap of absolute errors (subsample for visibility)
@@ -139,5 +152,5 @@ if __name__ == "__main__":
 
     plt.tight_layout()
     plt.savefig("figures/quantization_error.png", dpi=150)
-    print(f"\nVisualization saved to quantization_error.png")
+    print("\nVisualization saved to figures/quantization_error.png")
     plt.show()
